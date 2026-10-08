@@ -1,9 +1,5 @@
 # HealthTrack – Personal Health & Fitness Management System
 
-CS6004ES Coursework 2 (2025/26) · ASP.NET Core 8 MVC · C# · Entity Framework Core · SQL Server LocalDB
-
----
-
 ## 1. Installation guide
 
 ### Requirements
