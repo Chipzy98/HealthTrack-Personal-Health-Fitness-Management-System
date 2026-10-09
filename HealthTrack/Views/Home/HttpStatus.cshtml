@@ -1,0 +1,19 @@
+@model ErrorViewModel
+@{
+    (string title, string message, string icon) = Model.StatusCode switch
+    {
+        404 => ("Page not found", "The page you're looking for doesn't exist or has been moved.", "bi-signpost-split"),
+        403 => ("Access denied", "You don't have permission to view this page.", "bi-shield-lock"),
+        400 => ("Bad request", "The request could not be understood. Please check and try again.", "bi-question-octagon"),
+        _ => ("Error " + Model.StatusCode, "Something went wrong with this request.", "bi-exclamation-octagon")
+    };
+    ViewData["Title"] = title;
+}
+<div class="panel text-center py-5">
+    <div class="empty">
+        <i class="bi @icon"></i>
+        <h1 class="h3 mt-2">@title</h1>
+        <p class="text-muted">@message</p>
+        <a class="btn btn-primary mt-2" asp-controller="Home" asp-action="Index">Back to home</a>
+    </div>
+</div>

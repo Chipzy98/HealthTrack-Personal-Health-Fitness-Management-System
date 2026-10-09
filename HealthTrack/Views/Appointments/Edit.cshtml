@@ -1,0 +1,57 @@
+@model AppointmentFormViewModel
+@{
+    ViewData["Title"] = "Update appointment";
+}
+<div class="page-head">
+    <div>
+        <h1>Update appointment</h1>
+        <p>With @Model.ClientName. The client is notified of any change.</p>
+    </div>
+    <a class="btn btn-outline-primary" asp-action="Index"><i class="bi bi-arrow-left"></i> Back</a>
+</div>
+
+<div class="panel" style="max-width:820px">
+    @if (!string.IsNullOrEmpty(Model.Reason))
+    {
+        <div class="feedback-quote mb-3">
+            <p>@Model.Reason</p>
+            <small>Client's reason for booking</small>
+        </div>
+    }
+    <form asp-action="Edit" method="post" novalidate>
+        <div asp-validation-summary="ModelOnly" class="mb-3"></div>
+        <input type="hidden" asp-for="Id" />
+        <input type="hidden" asp-for="TrainerId" />
+        <input type="hidden" asp-for="Reason" />
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label asp-for="ScheduledAt" class="form-label"></label>
+                <input asp-for="ScheduledAt" type="datetime-local" asp-format="{0:yyyy-MM-ddTHH:mm}" class="form-control" />
+                <span asp-validation-for="ScheduledAt" class="field-validation-error"></span>
+            </div>
+            <div class="col-md-6">
+                <label asp-for="DurationMinutes" class="form-label"></label>
+                <input asp-for="DurationMinutes" class="form-control" min="15" max="180" step="15" />
+                <span asp-validation-for="DurationMinutes" class="field-validation-error"></span>
+            </div>
+            <div class="col-md-6">
+                <label asp-for="Type" class="form-label"></label>
+                <select asp-for="Type" asp-items="Html.GetEnumSelectList<AppointmentType>()" class="form-select"></select>
+            </div>
+            <div class="col-md-6">
+                <label asp-for="Status" class="form-label"></label>
+                <select asp-for="Status" asp-items="Html.GetEnumSelectList<AppointmentStatus>()" class="form-select"></select>
+            </div>
+            <div class="col-12">
+                <label asp-for="TrainerNotes" class="form-label"></label>
+                <textarea asp-for="TrainerNotes" class="form-control" rows="3" placeholder="e.g. Please bring your recent blood test results"></textarea>
+                <span asp-validation-for="TrainerNotes" class="field-validation-error"></span>
+            </div>
+        </div>
+        <button type="submit" class="btn btn-primary mt-4">Save &amp; notify client</button>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

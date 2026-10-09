@@ -1,0 +1,61 @@
+@model List<MealLog>
+@{
+    ViewData["Title"] = "Meals";
+    int? target = ViewBag.CalorieTarget as int?;
+    // Group meals per day so daily totals can be compared with the diet plan target.
+    var days = Model.GroupBy(m => m.LoggedAt.Date).OrderByDescending(g => g.Key).ToList();
+    int todayTotal = Model.Where(m => m.LoggedAt.Date == DateTime.Today).Sum(m => m.Calories);
+    int average = days.Count > 0 ? (int)days.Average(d => d.Sum(m => m.Calories)) : 0;
+}
+<div class="page-head">
+    <div>
+        <h1>Meal log</h1>
+        <p>What you've eaten over the last 30 days.</p>
+    </div>
+    <a class="btn btn-primary" asp-action="LogMeal"><i class="bi bi-plus-lg"></i> Log meal</a>
+</div>
+
+<div class="stat-grid">
+    <div class="stat"><div class="label">Today</div><div class="value">@todayTotal <small class="fs-6 text-muted">kcal</small></div></div>
+    <div class="stat"><div class="label">Daily target</div><div class="value">@(target.HasValue ? target.Value.ToString() : "–") <small class="fs-6 text-muted">kcal</small></div></div>
+    <div class="stat"><div class="label">Daily average</div><div class="value">@average <small class="fs-6 text-muted">kcal</small></div></div>
+    <div class="stat"><div class="label">Meals logged</div><div class="value">@Model.Count</div></div>
+</div>
+
+@if (!days.Any())
+{
+    <div class="panel"><div class="empty"><i class="bi bi-egg-fried"></i><p>No meals logged in the last 30 days.</p></div></div>
+}
+@foreach (var day in days)
+{
+    int total = day.Sum(m => m.Calories);
+    string tone = !target.HasValue ? "neutral" : total > target * 1.1 ? "alert" : total >= target * 0.8 ? "good" : "warn";
+    <div class="panel flush">
+        <div class="panel-head">
+            <h2>@(day.Key == DateTime.Today ? "Today" : day.Key.ToString("dddd, dd MMM"))</h2>
+            <span class="pill tone-@tone">@(total + (target.HasValue ? " / " + target : "")) kcal</span>
+        </div>
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead><tr><th>Time</th><th>Meal</th><th>Food</th><th>Calories</th><th>P / C / F (g)</th><th></th></tr></thead>
+                <tbody>
+                    @foreach (var m in day.OrderBy(m => m.LoggedAt))
+                    {
+                        <tr>
+                            <td>@m.LoggedAt.ToString("h:mm tt")</td>
+                            <td><span class="pill tone-neutral">@m.MealType</span></td>
+                            <td>@m.FoodItems</td>
+                            <td>@m.Calories kcal</td>
+                            <td class="small text-muted">@(m.ProteinG?.ToString("0") ?? "–") / @(m.CarbsG?.ToString("0") ?? "–") / @(m.FatG?.ToString("0") ?? "–")</td>
+                            <td class="text-end">
+                                <form asp-action="DeleteMeal" asp-route-id="@m.Id" method="post" data-confirm="Delete this meal entry?">
+                                    <button class="btn btn-sm btn-outline-danger" type="submit" aria-label="Delete"><i class="bi bi-trash"></i></button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}

@@ -1,0 +1,103 @@
+@model HealthMetricFormViewModel
+@{
+    ViewData["Title"] = "Add measurement";
+}
+<div class="page-head">
+    <div>
+        <h1>Add a measurement</h1>
+        <p>BMI is calculated automatically from your weight and height.</p>
+    </div>
+    <a class="btn btn-outline-primary" asp-action="Metrics"><i class="bi bi-arrow-left"></i> Back</a>
+</div>
+
+<div class="panel" style="max-width:820px">
+    <form asp-action="AddMetric" method="post" novalidate>
+        <div asp-validation-summary="ModelOnly" class="mb-3"></div>
+        <div class="row g-3">
+            <div class="col-md-4">
+                <label asp-for="RecordedAt" class="form-label"></label>
+                <input asp-for="RecordedAt" type="datetime-local" asp-format="{0:yyyy-MM-ddTHH:mm}" class="form-control" />
+                <span asp-validation-for="RecordedAt" class="field-validation-error"></span>
+            </div>
+            <div class="col-md-4">
+                <label asp-for="WeightKg" class="form-label"></label>
+                <input asp-for="WeightKg" class="form-control" step="0.1" />
+                <span asp-validation-for="WeightKg" class="field-validation-error"></span>
+            </div>
+            <div class="col-md-4">
+                <label asp-for="HeightCm" class="form-label"></label>
+                <input asp-for="HeightCm" class="form-control" step="0.1" />
+                <span asp-validation-for="HeightCm" class="field-validation-error"></span>
+            </div>
+            <div class="col-12">
+                <div class="stat d-flex align-items-center gap-3">
+                    <div>
+                        <div class="label">Calculated BMI</div>
+                        <div class="value" id="bmiValue">–</div>
+                    </div>
+                    <span class="pill tone-neutral" id="bmiCategory">Enter weight and height</span>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <label asp-for="BodyFatPercent" class="form-label"></label>
+                <input asp-for="BodyFatPercent" class="form-control" step="0.1" />
+                <span asp-validation-for="BodyFatPercent" class="field-validation-error"></span>
+            </div>
+            <div class="col-md-4">
+                <label asp-for="RestingHeartRate" class="form-label"></label>
+                <input asp-for="RestingHeartRate" class="form-control" />
+                <span asp-validation-for="RestingHeartRate" class="field-validation-error"></span>
+            </div>
+            <div class="col-md-4">
+                <label asp-for="SleepHours" class="form-label"></label>
+                <input asp-for="SleepHours" class="form-control" step="0.5" />
+                <span asp-validation-for="SleepHours" class="field-validation-error"></span>
+            </div>
+            <div class="col-md-4">
+                <label asp-for="SystolicBp" class="form-label"></label>
+                <input asp-for="SystolicBp" class="form-control" placeholder="e.g. 120" />
+                <span asp-validation-for="SystolicBp" class="field-validation-error"></span>
+            </div>
+            <div class="col-md-4">
+                <label asp-for="DiastolicBp" class="form-label"></label>
+                <input asp-for="DiastolicBp" class="form-control" placeholder="e.g. 80" />
+                <span asp-validation-for="DiastolicBp" class="field-validation-error"></span>
+            </div>
+            <div class="col-12">
+                <label asp-for="Notes" class="form-label"></label>
+                <textarea asp-for="Notes" class="form-control" rows="2" placeholder="Anything your trainer should know (symptoms, medication, how you felt)"></textarea>
+                <div class="form-text"><i class="bi bi-lock"></i> Stored encrypted in the database.</div>
+                <span asp-validation-for="Notes" class="field-validation-error"></span>
+            </div>
+        </div>
+        <button type="submit" class="btn btn-primary mt-4">Save measurement</button>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        // Live BMI preview. The saved value is always recalculated on the server.
+        (function () {
+            const weight = document.getElementById('WeightKg');
+            const height = document.getElementById('HeightCm');
+            const value = document.getElementById('bmiValue');
+            const category = document.getElementById('bmiCategory');
+            function update() {
+                const w = parseFloat(weight.value), h = parseFloat(height.value) / 100;
+                if (!w || !h) { value.textContent = '–'; category.textContent = 'Enter weight and height'; category.className = 'pill tone-neutral'; return; }
+                const bmi = w / (h * h);
+                let text = 'Obese', tone = 'alert';
+                if (bmi < 18.5) { text = 'Underweight'; tone = 'warn'; }
+                else if (bmi < 25) { text = 'Healthy weight'; tone = 'good'; }
+                else if (bmi < 30) { text = 'Overweight'; tone = 'warn'; }
+                value.textContent = bmi.toFixed(1);
+                category.textContent = text;
+                category.className = 'pill tone-' + tone;
+            }
+            weight.addEventListener('input', update);
+            height.addEventListener('input', update);
+            update();
+        })();
+    </script>
+}

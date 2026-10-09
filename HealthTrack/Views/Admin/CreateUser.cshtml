@@ -1,0 +1,21 @@
+@model AdminUserFormViewModel
+@{
+    ViewData["Title"] = "New user";
+}
+<div class="page-head">
+    <div>
+        <h1>Create a user</h1>
+        <p>Accounts created by an administrator are active and approved immediately.</p>
+    </div>
+    <a class="btn btn-outline-primary" asp-action="Users"><i class="bi bi-arrow-left"></i> Back</a>
+</div>
+<div class="panel" style="max-width:860px">
+    <form asp-action="CreateUser" method="post" novalidate>
+        <partial name="_UserForm" model="Model" />
+        <button type="submit" class="btn btn-primary mt-4">Create account</button>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

@@ -1,0 +1,145 @@
+@model AdminDashboardViewModel
+@{
+    ViewData["Title"] = "Admin dashboard";
+}
+<div class="page-head">
+    <div>
+        <h1>System overview</h1>
+        <p>User activity, system usage and trainer assignments.</p>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+        <a class="btn btn-primary" asp-action="CreateUser"><i class="bi bi-person-plus"></i> New user</a>
+        <a class="btn btn-outline-primary" asp-controller="Reports" asp-action="Index"><i class="bi bi-bar-chart-line"></i> Reports</a>
+    </div>
+</div>
+
+<div class="vitals mb-4">
+    <div class="vital"><div class="label">Clients</div><div class="value">@Model.TotalClients</div><div class="sub">@Model.UnassignedClients.Count without a trainer</div></div>
+    <div class="vital"><div class="label">Trainers</div><div class="value">@Model.TotalTrainers</div><div class="sub">@Model.PendingTrainers.Count awaiting approval</div></div>
+    <div class="vital"><div class="label">Active users (7 days)</div><div class="value">@Model.ActiveUsersLast7Days</div><div class="sub">@Model.LoginsToday sign-ins today</div></div>
+    <div class="vital"><div class="label">Open appointments</div><div class="value">@Model.OpenAppointments</div><div class="sub">Pending or approved</div></div>
+</div>
+
+<div class="stat-grid">
+    <div class="stat"><div class="label">Workout logs</div><div class="value">@Model.TotalWorkoutLogs</div></div>
+    <div class="stat"><div class="label">Meal logs</div><div class="value">@Model.TotalMealLogs</div></div>
+    <div class="stat"><div class="label">Health measurements</div><div class="value">@Model.TotalMetricEntries</div></div>
+    <div class="stat"><div class="label">Admins / inactive accounts</div><div class="value">@Model.TotalAdmins <small class="fs-6 text-muted">/ @Model.InactiveUsers</small></div></div>
+</div>
+
+<div class="row g-4">
+    <div class="col-xl-8">
+        <div class="panel">
+            <div class="panel-head"><h2>System usage · last 14 days</h2></div>
+            <div class="chart-box"><canvas id="usageChart" role="img" aria-label="Sign-ins and actions per day"></canvas></div>
+        </div>
+
+        <div class="panel flush">
+            <div class="panel-head"><h2>Trainer assignments</h2></div>
+            @if (!Model.TrainerAssignments.Any())
+            {
+                <div class="empty"><i class="bi bi-person-badge"></i><p>No approved trainers yet.</p></div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table align-middle mb-0">
+                        <thead><tr><th>Trainer</th><th>Specialisation</th><th>Clients</th><th>Upcoming sessions</th><th>Status</th></tr></thead>
+                        <tbody>
+                            @foreach (var t in Model.TrainerAssignments)
+                            {
+                                <tr>
+                                    <td class="fw-semibold">@t.TrainerName</td>
+                                    <td>@t.Specialization</td>
+                                    <td>@t.ClientCount</td>
+                                    <td>@t.UpcomingAppointments</td>
+                                    <td><span class="pill tone-@(t.IsActive ? "good" : "neutral")">@(t.IsActive ? "Active" : "Inactive")</span></td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+
+    <div class="col-xl-4">
+        <div class="panel">
+            <div class="panel-head"><h2>Trainers awaiting approval</h2></div>
+            @if (!Model.PendingTrainers.Any())
+            {
+                <div class="empty"><i class="bi bi-check2-all"></i><p>Nothing to approve.</p></div>
+            }
+            @foreach (var t in Model.PendingTrainers)
+            {
+                <div class="list-row">
+                    <div class="grow">
+                        <div class="title">@t.FullName</div>
+                        <div class="meta">@t.Specialization · @t.Email · @t.CreatedAt.TimeAgo()</div>
+                    </div>
+                    <form asp-action="ApproveTrainer" asp-route-id="@t.Id" method="post">
+                        <button class="btn btn-sm btn-primary" type="submit">Approve</button>
+                    </form>
+                </div>
+            }
+        </div>
+
+        <div class="panel">
+            <div class="panel-head"><h2>Clients without a trainer</h2></div>
+            @if (!Model.UnassignedClients.Any())
+            {
+                <div class="empty"><i class="bi bi-people"></i><p>Every active client has a trainer.</p></div>
+            }
+            @foreach (var c in Model.UnassignedClients)
+            {
+                <form asp-action="AssignTrainer" method="post" class="list-row">
+                    <input type="hidden" name="clientId" value="@c.Id" />
+                    <div class="grow">
+                        <div class="title">@c.FullName</div>
+                        <div class="meta">Joined @c.CreatedAt.ToString("dd MMM yyyy")</div>
+                        <select name="trainerId" class="form-select form-select-sm mt-1" asp-items="Model.TrainerOptions" required aria-label="Trainer for @c.FullName">
+                            <option value="">Choose trainer…</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-sm btn-primary align-self-end" type="submit">Assign</button>
+                </form>
+            }
+        </div>
+
+        <div class="panel">
+            <div class="panel-head">
+                <h2>Recent activity</h2>
+                <a asp-action="ActivityLogs" class="small">Full log</a>
+            </div>
+            <ul class="list-plain">
+                @foreach (var log in Model.RecentActivity)
+                {
+                    <li class="list-row">
+                        <div class="grow">
+                            <div class="title">@(log.User?.FullName ?? "Unknown user") <span class="pill tone-@(log.Action == "LoginFailed" ? "alert" : "neutral")">@log.Action</span></div>
+                            <div class="meta">@log.Timestamp.TimeAgo()@(string.IsNullOrEmpty(log.Details) ? "" : " · " + log.Details)</div>
+                        </div>
+                    </li>
+                }
+            </ul>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script>
+        applyChartDefaults();
+        new Chart(document.getElementById('usageChart'), {
+            type: 'bar',
+            data: {
+                labels: @Json.Serialize(Model.ActivityLabels),
+                datasets: [
+                    { label: 'Sign-ins', data: @Json.Serialize(Model.LoginCounts), backgroundColor: '#0d8f7f', borderRadius: 6 },
+                    { label: 'Other actions', data: @Json.Serialize(Model.ActionCounts), backgroundColor: '#f3c76b', borderRadius: 6 }
+                ]
+            },
+            options: { scales: { x: { stacked: true, grid: { display: false } }, y: { stacked: true, beginAtZero: true, ticks: { precision: 0 } } } }
+        });
+    </script>
+}

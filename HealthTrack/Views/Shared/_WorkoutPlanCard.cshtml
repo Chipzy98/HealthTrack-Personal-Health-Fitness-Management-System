@@ -1,0 +1,69 @@
+@model WorkoutPlan
+@*
+    Reusable workout plan card. Set ViewData["ShowActions"] = true to show the trainer's
+    activate / deactivate / delete buttons, and ViewData["ShowClient"] = true to show the client name.
+*@
+@{
+    bool showActions = ViewData["ShowActions"] as bool? ?? false;
+    bool showClient = ViewData["ShowClient"] as bool? ?? false;
+    // Exercises grouped Monday -> Sunday
+    var days = Model.Exercises.GroupBy(e => e.Day).OrderBy(g => ((int)g.Key + 6) % 7);
+}
+<div class="plan-card @(Model.IsActive ? "" : "inactive")">
+    <div class="plan-top">
+        <div>
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <i class="bi bi-activity text-success"></i>
+                <h3 class="h5 mb-0">@Model.Title</h3>
+                <span class="pill tone-@(Model.IsActive ? "good" : "neutral")">@(Model.IsActive ? "Active" : "Inactive")</span>
+            </div>
+            <div class="small text-muted mt-1">
+                @if (showClient && Model.Client != null) { <span><i class="bi bi-person"></i> @Model.Client.FullName ·</span> }
+                @if (!showClient && Model.Trainer != null) { <span><i class="bi bi-person-badge"></i> @Model.Trainer.FullName ·</span> }
+                @Model.StartDate.ToString("dd MMM") – @Model.EndDate.ToString("dd MMM yyyy")
+                @if (!string.IsNullOrEmpty(Model.Goal)) { <span>· Goal: @Model.Goal</span> }
+            </div>
+        </div>
+        @if (showActions)
+        {
+            <div class="d-flex gap-2 align-items-start">
+                <form asp-controller="Trainer" asp-action="TogglePlan" method="post">
+                    <input type="hidden" name="planType" value="workout" />
+                    <input type="hidden" name="id" value="@Model.Id" />
+                    <button class="btn btn-sm btn-outline-primary" type="submit">@(Model.IsActive ? "Deactivate" : "Activate")</button>
+                </form>
+                <form asp-controller="Trainer" asp-action="DeletePlan" method="post" data-confirm="Delete this workout plan permanently?">
+                    <input type="hidden" name="planType" value="workout" />
+                    <input type="hidden" name="id" value="@Model.Id" />
+                    <button class="btn btn-sm btn-outline-danger" type="submit" aria-label="Delete plan"><i class="bi bi-trash"></i></button>
+                </form>
+            </div>
+        }
+    </div>
+    <div class="plan-body">
+        @if (!string.IsNullOrEmpty(Model.Description))
+        {
+            <p class="text-muted">@Model.Description</p>
+        }
+        <div class="row g-3">
+            @foreach (var day in days)
+            {
+                <div class="col-md-6 col-xl-4">
+                    <div class="day-group">
+                        <h4>@day.Key</h4>
+                        @foreach (var ex in day)
+                        {
+                            <div class="exercise-chip">
+                                <span>@ex.Name</span>
+                                <small class="text-muted">
+                                    @if (ex.Sets > 0) { <text>@ex.Sets × @ex.Reps</text> }
+                                    @if (ex.DurationMinutes > 0) { <text> · @ex.DurationMinutes min</text> }
+                                </small>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>

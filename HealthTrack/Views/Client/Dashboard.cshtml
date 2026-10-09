@@ -1,0 +1,240 @@
+@model ClientDashboardViewModel
+@{
+    ViewData["Title"] = "Dashboard";
+    var metric = Model.LatestMetric;
+    int calorieTarget = Model.ActiveDietPlan?.DailyCalorieTarget ?? 0;
+}
+<div class="page-head">
+    <div>
+        <h1>Your health today</h1>
+        <p>@DateTime.Today.ToString("dddd, dd MMMM yyyy")@(Model.Trainer != null ? " · Coached by " + Model.Trainer.FullName : "")</p>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+        <a class="btn btn-primary" asp-action="LogWorkout"><i class="bi bi-plus-lg"></i> Log workout</a>
+        <a class="btn btn-outline-primary" asp-action="LogMeal"><i class="bi bi-egg-fried"></i> Log meal</a>
+        <a class="btn btn-outline-primary" asp-action="AddMetric"><i class="bi bi-heart-pulse"></i> Add measurement</a>
+    </div>
+</div>
+
+@* Vitals strip: latest measurements at a glance *@
+<div class="vitals mb-4">
+    <div class="vital">
+        <div class="label">Weight</div>
+        <div class="value">@(metric != null ? metric.WeightKg.ToString("0.0") : "–")<small>kg</small></div>
+        <div class="sub">
+            @if (Model.WeightChange.HasValue)
+            {
+                <span>@(Model.WeightChange > 0 ? "+" : "")@Model.WeightChange kg since first entry</span>
+            }
+            else
+            {
+                <span>Add two entries to see change</span>
+            }
+        </div>
+    </div>
+    <div class="vital">
+        <div class="label">BMI</div>
+        <div class="value">@(metric != null ? metric.Bmi.ToString("0.0") : "–")</div>
+        <div class="sub">@(metric != null ? HealthCalculator.BmiCategory(metric.Bmi) : "No data yet")</div>
+    </div>
+    <div class="vital">
+        <div class="label">Blood pressure</div>
+        <div class="value">@(metric?.SystolicBp != null ? $"{metric.SystolicBp}/{metric.DiastolicBp}" : "–")<small>mmHg</small></div>
+        <div class="sub">@(metric?.RestingHeartRate != null ? $"Resting HR {metric.RestingHeartRate} bpm" : "No reading")</div>
+    </div>
+    <div class="vital">
+        <div class="label">Calories today</div>
+        <div class="value">@Model.CaloriesConsumedToday<small>kcal</small></div>
+        <div class="sub">@(calorieTarget > 0 ? $"Target {calorieTarget} kcal" : "No diet plan yet")</div>
+    </div>
+</div>
+
+<div class="stat-grid">
+    <div class="stat">
+        <div class="label">Workouts this week</div>
+        <div class="value">@Model.WorkoutsThisWeek</div>
+        <div class="sub text-muted small">Since Monday</div>
+    </div>
+    <div class="stat">
+        <div class="label">Active minutes</div>
+        <div class="value">@Model.MinutesThisWeek</div>
+        <div class="sub text-muted small">This week</div>
+    </div>
+    <div class="stat">
+        <div class="label">Calories burned</div>
+        <div class="value">@Model.CaloriesBurnedThisWeek</div>
+        <div class="sub text-muted small">kcal this week</div>
+    </div>
+    <div class="stat">
+        <div class="label">Upcoming sessions</div>
+        <div class="value">@Model.UpcomingAppointments.Count</div>
+        <div class="sub text-muted small">Pending or approved</div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-xl-8">
+        <div class="panel">
+            <div class="panel-head">
+                <h2>Weight trend</h2>
+                <a asp-controller="Progress" asp-action="Index" class="small">Full progress <i class="bi bi-arrow-right"></i></a>
+            </div>
+            @if (Model.WeightValues.Count >= 2)
+            {
+                <div class="chart-box sm"><canvas id="weightChart" aria-label="Weight trend chart" role="img"></canvas></div>
+            }
+            else
+            {
+                <div class="empty"><i class="bi bi-graph-up"></i><p>Record at least two measurements to see your weight trend.</p></div>
+            }
+        </div>
+
+        <div class="panel">
+            <div class="panel-head">
+                <h2>Today's workout · @DateTime.Today.DayOfWeek</h2>
+                <a asp-action="MyPlans" class="small">All plans</a>
+            </div>
+            @if (Model.ActiveWorkoutPlan == null)
+            {
+                <div class="empty"><i class="bi bi-clipboard2"></i><p>No active workout plan. Your trainer will create one for you.</p></div>
+            }
+            else if (!Model.TodaysExercises.Any())
+            {
+                <div class="empty"><i class="bi bi-cup-hot"></i><p>Rest day in <strong>@Model.ActiveWorkoutPlan.Title</strong>. Light walking or stretching is fine.</p></div>
+            }
+            else
+            {
+                <p class="small text-muted">From <strong>@Model.ActiveWorkoutPlan.Title</strong></p>
+                @foreach (var ex in Model.TodaysExercises)
+                {
+                    <div class="exercise-chip">
+                        <div>
+                            <strong>@ex.Name</strong>
+                            <div class="small text-muted">
+                                @if (ex.Sets > 0) { <text>@ex.Sets sets × @ex.Reps reps</text> }
+                                @if (ex.DurationMinutes > 0) { <text> · @ex.DurationMinutes min</text> }
+                                @if (!string.IsNullOrEmpty(ex.Notes)) { <text> · @ex.Notes</text> }
+                            </div>
+                        </div>
+                        <a class="btn btn-sm btn-outline-primary" asp-action="LogWorkout" asp-route-exercise="@ex.Name">Log it</a>
+                    </div>
+                }
+            }
+        </div>
+
+        <div class="panel">
+            <div class="panel-head">
+                <h2>Diet schedule</h2>
+                @if (Model.ActiveDietPlan != null) { <span class="pill tone-neutral">@Model.ActiveDietPlan.DailyCalorieTarget kcal/day</span> }
+            </div>
+            @if (Model.ActiveDietPlan == null)
+            {
+                <div class="empty"><i class="bi bi-egg"></i><p>No active diet plan yet.</p></div>
+            }
+            else
+            {
+                <ul class="list-plain">
+                    @foreach (var item in Model.ActiveDietPlan.Items.OrderBy(i => i.ScheduledTime))
+                    {
+                        <li class="list-row">
+                            <span class="pill tone-good" style="min-width:78px;text-align:center">@DateTime.Today.Add(item.ScheduledTime).ToString("h:mm tt")</span>
+                            <div class="grow">
+                                <div class="title">@item.MealType</div>
+                                <div class="meta">@item.Description</div>
+                            </div>
+                            <span class="small text-muted">@item.Calories kcal</span>
+                        </li>
+                    }
+                </ul>
+            }
+        </div>
+    </div>
+
+    <div class="col-xl-4">
+        <div class="panel">
+            <div class="panel-head">
+                <h2>Upcoming appointments</h2>
+                <a asp-controller="Appointments" asp-action="Create" class="small">Book</a>
+            </div>
+            @if (!Model.UpcomingAppointments.Any())
+            {
+                <div class="empty"><i class="bi bi-calendar"></i><p>No upcoming appointments.</p></div>
+            }
+            <ul class="list-plain">
+                @foreach (var a in Model.UpcomingAppointments)
+                {
+                    <li class="list-row">
+                        <div class="date-tile"><div class="d">@a.ScheduledAt.Day</div><div class="m">@a.ScheduledAt.ToString("MMM").ToUpper()</div></div>
+                        <div class="grow">
+                            <div class="title">@a.Type.GetDisplayName()</div>
+                            <div class="meta">@a.ScheduledAt.ToString("ddd h:mm tt") · @a.Trainer?.FullName</div>
+                        </div>
+                        <span class="pill tone-@a.Status.StatusTone()">@a.Status</span>
+                    </li>
+                }
+            </ul>
+        </div>
+
+        <div class="panel">
+            <div class="panel-head"><h2>Trainer feedback</h2></div>
+            @if (!Model.RecentFeedback.Any())
+            {
+                <div class="empty"><i class="bi bi-chat-left"></i><p>No feedback yet.</p></div>
+            }
+            @foreach (var f in Model.RecentFeedback)
+            {
+                <div class="feedback-quote">
+                    <p>@f.Message</p>
+                    <small>@f.Trainer?.FullName · @f.CreatedAt.TimeAgo()</small>
+                </div>
+            }
+        </div>
+
+        <div class="panel">
+            <div class="panel-head">
+                <h2>Recent workouts</h2>
+                <a asp-action="WorkoutLogs" class="small">History</a>
+            </div>
+            @if (!Model.RecentWorkouts.Any())
+            {
+                <div class="empty"><i class="bi bi-activity"></i><p>Nothing logged yet.</p></div>
+            }
+            <ul class="list-plain">
+                @foreach (var w in Model.RecentWorkouts)
+                {
+                    <li class="list-row">
+                        <div class="grow">
+                            <div class="title">@w.ExerciseName</div>
+                            <div class="meta">@w.Date.ToString("ddd dd MMM") · @w.DurationMinutes min · @w.Intensity</div>
+                        </div>
+                        <span class="small text-muted">@w.CaloriesBurned kcal</span>
+                    </li>
+                }
+            </ul>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @if (Model.WeightValues.Count >= 2)
+    {
+        <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+        <script>
+            applyChartDefaults();
+            new Chart(document.getElementById('weightChart'), {
+                type: 'line',
+                data: {
+                    labels: @Json.Serialize(Model.WeightLabels),
+                    datasets: [{
+                        label: 'Weight (kg)',
+                        data: @Json.Serialize(Model.WeightValues),
+                        borderColor: '#0d8f7f',
+                        backgroundColor: 'rgba(13,143,127,.12)',
+                        fill: true, tension: .35, pointRadius: 3
+                    }]
+                },
+                options: { plugins: { legend: { display: false } } }
+            });
+        </script>
+    }
+}

@@ -1,0 +1,93 @@
+@model ProfileViewModel
+@{
+    ViewData["Title"] = "My profile";
+    bool isClient = Model.Role == UserRole.Client;
+}
+<div class="page-head">
+    <div>
+        <h1>My profile</h1>
+        <p>Keep your details up to date so your trainer can plan safely.</p>
+    </div>
+    <a class="btn btn-outline-primary" asp-action="ChangePassword"><i class="bi bi-key"></i> Change password</a>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-4">
+        <div class="panel text-center">
+            <span class="avatar lg mx-auto mb-3">@string.Concat(Model.FullName.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(p => char.ToUpper(p[0])))</span>
+            <h2 class="h5 mb-0">@Model.FullName</h2>
+            <div class="text-muted small">@Model.Email</div>
+            <span class="pill tone-good mt-2 d-inline-block">@Model.Role</span>
+            <hr />
+            <div class="text-start small">
+                <div class="d-flex justify-content-between py-1"><span class="text-muted">Member since</span><span>@Model.MemberSince.ToString("dd MMM yyyy")</span></div>
+                @if (isClient)
+                {
+                    <div class="d-flex justify-content-between py-1"><span class="text-muted">Trainer</span><span>@(Model.TrainerName ?? "Not assigned yet")</span></div>
+                }
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-8">
+        <div class="panel">
+            <form asp-action="Profile" method="post" novalidate>
+                <div asp-validation-summary="ModelOnly" class="mb-3"></div>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label asp-for="FullName" class="form-label"></label>
+                        <input asp-for="FullName" class="form-control" />
+                        <span asp-validation-for="FullName" class="field-validation-error"></span>
+                    </div>
+                    <div class="col-md-6">
+                        <label asp-for="Email" class="form-label"></label>
+                        <input asp-for="Email" class="form-control" readonly />
+                        <div class="form-text">Contact an administrator to change your email.</div>
+                    </div>
+                    <div class="col-md-6">
+                        <label asp-for="PhoneNumber" class="form-label"></label>
+                        <input asp-for="PhoneNumber" class="form-control" />
+                        <span asp-validation-for="PhoneNumber" class="field-validation-error"></span>
+                    </div>
+                    <div class="col-md-6">
+                        <label asp-for="DateOfBirth" class="form-label"></label>
+                        <input asp-for="DateOfBirth" class="form-control" max="@DateTime.Today.ToString("yyyy-MM-dd")" />
+                        <span asp-validation-for="DateOfBirth" class="field-validation-error"></span>
+                    </div>
+                    <div class="col-md-6">
+                        <label asp-for="Gender" class="form-label"></label>
+                        <select asp-for="Gender" asp-items="Html.GetEnumSelectList<GenderType>()" class="form-select">
+                            <option value="">Prefer not to say</option>
+                        </select>
+                    </div>
+                    @if (isClient)
+                    {
+                        <div class="col-md-6">
+                            <label asp-for="HeightCm" class="form-label"></label>
+                            <input asp-for="HeightCm" class="form-control" step="0.1" />
+                            <span asp-validation-for="HeightCm" class="field-validation-error"></span>
+                        </div>
+                        <div class="col-12">
+                            <label asp-for="MedicalConditions" class="form-label"></label>
+                            <textarea asp-for="MedicalConditions" class="form-control" rows="3" placeholder="e.g. Asthma, knee injury, lactose intolerance"></textarea>
+                            <div class="form-text"><i class="bi bi-lock"></i> Encrypted in the database. Visible only to you, your trainer and administrators.</div>
+                            <span asp-validation-for="MedicalConditions" class="field-validation-error"></span>
+                        </div>
+                    }
+                    else if (Model.Role == UserRole.Trainer)
+                    {
+                        <div class="col-md-6">
+                            <label asp-for="Specialization" class="form-label"></label>
+                            <input asp-for="Specialization" class="form-control" />
+                            <span asp-validation-for="Specialization" class="field-validation-error"></span>
+                        </div>
+                    }
+                </div>
+                <button type="submit" class="btn btn-primary mt-4">Save profile</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

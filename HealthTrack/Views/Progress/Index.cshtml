@@ -1,0 +1,131 @@
+@model ProgressViewModel
+@{
+    ViewData["Title"] = "Progress";
+    var ranges = new[] { (30, "30 days"), (90, "90 days"), (180, "6 months"), (365, "1 year") };
+    bool hasMetrics = Model.WeightValues.Count > 0;
+}
+<div class="page-head">
+    <div>
+        <h1>@(Model.ViewedByStaff ? Model.ClientName + "'s progress" : "Your progress")</h1>
+        <p>Trends in weight, BMI, heart rate, calories and training volume over the last @Model.Days days.</p>
+    </div>
+    @if (Model.ViewedByStaff && User.IsInRole(nameof(UserRole.Trainer)))
+    {
+        <a class="btn btn-outline-primary" asp-controller="Trainer" asp-action="ClientDetails" asp-route-id="@Model.ClientId"><i class="bi bi-arrow-left"></i> Client details</a>
+    }
+</div>
+
+<div class="filter-bar">
+    @foreach (var (days, label) in ranges)
+    {
+        <a class="chip-link @(Model.Days == days ? "active" : "")" asp-action="Index" asp-route-days="@days" asp-route-clientId="@(Model.ViewedByStaff ? (int?)Model.ClientId : null)">@label</a>
+    }
+</div>
+
+<div class="vitals mb-4">
+    <div class="vital">
+        <div class="label">Current weight</div>
+        <div class="value">@(Model.CurrentWeight?.ToString("0.0") ?? "–")<small>kg</small></div>
+        <div class="sub">
+            @if (Model.WeightChange.HasValue)
+            {
+                <span>@(Model.WeightChange > 0 ? "+" : "")@Model.WeightChange kg from @(Model.StartWeight?.ToString("0.0")) kg</span>
+            }
+            else { <span>Not enough data</span> }
+        </div>
+    </div>
+    <div class="vital">
+        <div class="label">Current BMI</div>
+        <div class="value">@(Model.CurrentBmi?.ToString("0.0") ?? "–")</div>
+        <div class="sub">@(Model.CurrentBmi.HasValue ? HealthCalculator.BmiCategory(Model.CurrentBmi.Value) : "No data")</div>
+    </div>
+    <div class="vital">
+        <div class="label">Workouts</div>
+        <div class="value">@Model.TotalWorkouts</div>
+        <div class="sub">@Model.TotalMinutes min · @Model.TotalCaloriesBurned kcal burned</div>
+    </div>
+    <div class="vital">
+        <div class="label">Average intake</div>
+        <div class="value">@Model.AverageDailyIntake<small>kcal/day</small></div>
+        <div class="sub">@(Model.LatestBloodPressure != null ? "Latest BP " + Model.LatestBloodPressure : "No BP reading")</div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-xl-6">
+        <div class="panel">
+            <div class="panel-head"><h2>Weight (kg)</h2></div>
+            @if (hasMetrics) { <div class="chart-box"><canvas id="weightChart" role="img" aria-label="Weight over time"></canvas></div> }
+            else { <div class="empty"><i class="bi bi-graph-up"></i><p>No measurements in this period.</p></div> }
+        </div>
+    </div>
+    <div class="col-xl-6">
+        <div class="panel">
+            <div class="panel-head"><h2>BMI</h2><span class="small text-muted">Healthy range 18.5 – 24.9</span></div>
+            @if (hasMetrics) { <div class="chart-box"><canvas id="bmiChart" role="img" aria-label="BMI over time"></canvas></div> }
+            else { <div class="empty"><i class="bi bi-graph-up"></i><p>No measurements in this period.</p></div> }
+        </div>
+    </div>
+    <div class="col-12">
+        <div class="panel">
+            <div class="panel-head"><h2>Calories burned vs consumed</h2></div>
+            <div class="chart-box"><canvas id="calorieChart" role="img" aria-label="Daily calories burned and consumed"></canvas></div>
+        </div>
+    </div>
+    <div class="col-xl-6">
+        <div class="panel">
+            <div class="panel-head"><h2>Weekly workout minutes</h2></div>
+            <div class="chart-box"><canvas id="minutesChart" role="img" aria-label="Workout minutes per week"></canvas></div>
+        </div>
+    </div>
+    <div class="col-xl-6">
+        <div class="panel">
+            <div class="panel-head"><h2>Resting heart rate (bpm)</h2></div>
+            @if (Model.HeartRateValues.Any(v => v.HasValue)) { <div class="chart-box"><canvas id="heartChart" role="img" aria-label="Resting heart rate"></canvas></div> }
+            else { <div class="empty"><i class="bi bi-heart-pulse"></i><p>No heart-rate readings in this period.</p></div> }
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script>
+        applyChartDefaults();
+        const teal = '#0d8f7f', amber = '#d98a04', rose = '#c8364f', pine = '#0f3b35';
+        const metricLabels = @Json.Serialize(Model.MetricLabels);
+
+        function lineChart(id, label, data, color, extra) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            new Chart(el, {
+                type: 'line',
+                data: { labels: metricLabels, datasets: [{ label: label, data: data, borderColor: color, backgroundColor: color + '22', fill: true, tension: .35, pointRadius: 3, spanGaps: true }].concat(extra || []) },
+                options: { plugins: { legend: { display: !!extra } } }
+            });
+        }
+
+        lineChart('weightChart', 'Weight (kg)', @Json.Serialize(Model.WeightValues), teal);
+        lineChart('bmiChart', 'BMI', @Json.Serialize(Model.BmiValues), amber, [
+            { label: 'Healthy upper limit (24.9)', data: metricLabels.map(() => 24.9), borderColor: rose, borderDash: [6, 4], pointRadius: 0, fill: false }
+        ]);
+        lineChart('heartChart', 'Resting HR', @Json.Serialize(Model.HeartRateValues), rose);
+
+        new Chart(document.getElementById('calorieChart'), {
+            type: 'bar',
+            data: {
+                labels: @Json.Serialize(Model.DailyLabels),
+                datasets: [
+                    { label: 'Consumed (kcal)', data: @Json.Serialize(Model.CaloriesConsumedDaily), backgroundColor: '#f3c76b', borderRadius: 4 },
+                    { label: 'Burned (kcal)', data: @Json.Serialize(Model.CaloriesBurnedDaily), backgroundColor: teal, borderRadius: 4 }
+                ]
+            },
+            options: { scales: { x: { grid: { display: false }, ticks: { maxTicksLimit: 12 } }, y: { beginAtZero: true } } }
+        });
+
+        new Chart(document.getElementById('minutesChart'), {
+            type: 'bar',
+            data: { labels: @Json.Serialize(Model.WeekLabels), datasets: [{ label: 'Minutes', data: @Json.Serialize(Model.WorkoutMinutesWeekly), backgroundColor: pine, borderRadius: 6 }] },
+            options: { plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } }, y: { beginAtZero: true } } }
+        });
+    </script>
+}

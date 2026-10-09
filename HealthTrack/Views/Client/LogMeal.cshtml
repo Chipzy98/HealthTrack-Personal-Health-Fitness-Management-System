@@ -1,0 +1,100 @@
+@model MealLogFormViewModel
+@{
+    ViewData["Title"] = "Log meal";
+}
+<div class="page-head">
+    <div>
+        <h1>Log a meal</h1>
+        <p>Keep an honest record. It helps your trainer adjust your plan.</p>
+    </div>
+    <a class="btn btn-outline-primary" asp-action="MealLogs"><i class="bi bi-arrow-left"></i> Back</a>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-7">
+        <div class="panel">
+            <form asp-action="LogMeal" method="post" novalidate>
+                <div asp-validation-summary="ModelOnly" class="mb-3"></div>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label asp-for="MealType" class="form-label"></label>
+                        <select asp-for="MealType" asp-items="Html.GetEnumSelectList<MealType>()" class="form-select"></select>
+                    </div>
+                    <div class="col-md-6">
+                        <label asp-for="LoggedAt" class="form-label"></label>
+                        <input asp-for="LoggedAt" type="datetime-local" asp-format="{0:yyyy-MM-ddTHH:mm}" class="form-control" />
+                        <span asp-validation-for="LoggedAt" class="field-validation-error"></span>
+                    </div>
+                    <div class="col-12">
+                        <label asp-for="FoodItems" class="form-label"></label>
+                        <textarea asp-for="FoodItems" class="form-control" rows="2" placeholder="e.g. Red rice, dhal curry, gotukola sambol"></textarea>
+                        <span asp-validation-for="FoodItems" class="field-validation-error"></span>
+                    </div>
+                    <div class="col-md-3">
+                        <label asp-for="Calories" class="form-label"></label>
+                        <input asp-for="Calories" class="form-control" min="0" />
+                        <span asp-validation-for="Calories" class="field-validation-error"></span>
+                    </div>
+                    <div class="col-md-3">
+                        <label asp-for="ProteinG" class="form-label"></label>
+                        <input asp-for="ProteinG" class="form-control" step="0.1" />
+                        <span asp-validation-for="ProteinG" class="field-validation-error"></span>
+                    </div>
+                    <div class="col-md-3">
+                        <label asp-for="CarbsG" class="form-label"></label>
+                        <input asp-for="CarbsG" class="form-control" step="0.1" />
+                        <span asp-validation-for="CarbsG" class="field-validation-error"></span>
+                    </div>
+                    <div class="col-md-3">
+                        <label asp-for="FatG" class="form-label"></label>
+                        <input asp-for="FatG" class="form-control" step="0.1" />
+                        <span asp-validation-for="FatG" class="field-validation-error"></span>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary mt-4">Save meal</button>
+            </form>
+        </div>
+    </div>
+    <div class="col-lg-5">
+        <div class="panel">
+            <div class="panel-head"><h2>From your diet plan</h2></div>
+            @if (Model.ActiveDietPlan == null)
+            {
+                <div class="empty"><i class="bi bi-egg"></i><p>No active diet plan.</p></div>
+            }
+            else
+            {
+                <p class="small text-muted">Click a planned meal to fill in the form.</p>
+                <ul class="list-plain">
+                    @foreach (var item in Model.ActiveDietPlan.Items.OrderBy(i => i.ScheduledTime))
+                    {
+                        <li class="list-row" role="button" tabindex="0" data-plan-item
+                            data-meal="@((int)item.MealType)" data-food="@item.Description" data-calories="@item.Calories">
+                            <div class="grow">
+                                <div class="title">@item.MealType · @DateTime.Today.Add(item.ScheduledTime).ToString("h:mm tt")</div>
+                                <div class="meta">@item.Description</div>
+                            </div>
+                            <span class="small text-muted">@item.Calories kcal</span>
+                        </li>
+                    }
+                </ul>
+            }
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        // Copy a planned meal into the form.
+        document.querySelectorAll('[data-plan-item]').forEach(function (row) {
+            function fill() {
+                document.getElementById('MealType').value = row.dataset.meal;
+                document.getElementById('FoodItems').value = row.dataset.food;
+                document.getElementById('Calories').value = row.dataset.calories;
+            }
+            row.addEventListener('click', fill);
+            row.addEventListener('keydown', function (e) { if (e.key === 'Enter') fill(); });
+        });
+    </script>
+}
