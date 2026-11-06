@@ -1,0 +1,180 @@
+@model ClientDetailsViewModel
+@{
+    ViewData["Title"] = Model.Client.FullName;
+    var c = Model.Client;
+    var latest = Model.Metrics.FirstOrDefault();
+    var workoutCardData = new ViewDataDictionary(ViewData) { ["ShowActions"] = false };
+}
+<div class="page-head">
+    <div class="d-flex align-items-center gap-3">
+        <span class="avatar lg">@c.Initials</span>
+        <div>
+            <h1 class="mb-0">@c.FullName</h1>
+            <p class="mb-0">
+                @c.Email
+                @if (c.Age.HasValue) { <span>· @c.Age years</span> }
+                @if (c.Gender.HasValue) { <span>· @c.Gender</span> }
+                @if (c.HeightCm.HasValue) { <span>· @c.HeightCm cm</span> }
+            </p>
+        </div>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+        <a class="btn btn-outline-primary" asp-controller="Progress" asp-action="Index" asp-route-clientId="@c.Id"><i class="bi bi-graph-up-arrow"></i> Progress</a>
+        <a class="btn btn-primary" asp-action="CreateWorkoutPlan" asp-route-clientId="@c.Id"><i class="bi bi-plus-lg"></i> Workout plan</a>
+        <a class="btn btn-primary" asp-action="CreateDietPlan" asp-route-clientId="@c.Id"><i class="bi bi-plus-lg"></i> Diet plan</a>
+    </div>
+</div>
+
+@if (!string.IsNullOrEmpty(c.MedicalConditions))
+{
+    <div class="alert flash alert-danger mb-3">
+        <i class="bi bi-clipboard2-heart"></i>
+        <span><strong>Medical conditions / allergies:</strong> @c.MedicalConditions</span>
+    </div>
+}
+
+<div class="vitals mb-4">
+    <div class="vital"><div class="label">Weight</div><div class="value">@(latest?.WeightKg.ToString("0.0") ?? "–")<small>kg</small></div><div class="sub">@(latest != null ? latest.RecordedAt.ToString("dd MMM") : "No data")</div></div>
+    <div class="vital"><div class="label">BMI</div><div class="value">@(latest?.Bmi.ToString("0.0") ?? "–")</div><div class="sub">@(latest != null ? HealthCalculator.BmiCategory(latest.Bmi) : "")</div></div>
+    <div class="vital"><div class="label">Blood pressure</div><div class="value">@(latest?.SystolicBp != null ? $"{latest.SystolicBp}/{latest.DiastolicBp}" : "–")</div><div class="sub">@(latest?.RestingHeartRate != null ? $"HR {latest.RestingHeartRate} bpm" : "")</div></div>
+    <div class="vital"><div class="label">Workouts (last 10)</div><div class="value">@Model.Workouts.Sum(w => w.DurationMinutes)<small>min</small></div><div class="sub">@Model.Workouts.Sum(w => w.CaloriesBurned) kcal burned</div></div>
+</div>
+
+<div class="row g-4">
+    <div class="col-xl-8">
+        <ul class="nav nav-pills mb-3" role="tablist">
+            <li class="nav-item"><button class="nav-link active" data-bs-toggle="pill" data-bs-target="#tabWorkouts" type="button">Workouts</button></li>
+            <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tabMeals" type="button">Meals</button></li>
+            <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tabMetrics" type="button">Measurements</button></li>
+            <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tabPlans" type="button">Plans (@(Model.WorkoutPlans.Count + Model.DietPlans.Count))</button></li>
+        </ul>
+        <div class="tab-content">
+            <div class="tab-pane fade show active" id="tabWorkouts">
+                <div class="panel flush">
+                    @if (!Model.Workouts.Any()) { <div class="empty"><i class="bi bi-activity"></i><p>No workouts logged.</p></div> }
+                    else
+                    {
+                        <div class="table-responsive">
+                            <table class="table align-middle mb-0">
+                                <thead><tr><th>Date</th><th>Exercise</th><th>Duration</th><th>Intensity</th><th>Calories</th><th>Notes</th></tr></thead>
+                                <tbody>
+                                    @foreach (var w in Model.Workouts)
+                                    {
+                                        <tr><td>@w.Date.ToString("dd MMM")</td><td class="fw-semibold">@w.ExerciseName</td><td>@w.DurationMinutes min</td><td>@w.Intensity</td><td>@w.CaloriesBurned</td><td class="small text-muted">@w.Notes</td></tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+            </div>
+            <div class="tab-pane fade" id="tabMeals">
+                <div class="panel flush">
+                    @if (!Model.Meals.Any()) { <div class="empty"><i class="bi bi-egg-fried"></i><p>No meals logged.</p></div> }
+                    else
+                    {
+                        <div class="table-responsive">
+                            <table class="table align-middle mb-0">
+                                <thead><tr><th>When</th><th>Meal</th><th>Food</th><th>Calories</th></tr></thead>
+                                <tbody>
+                                    @foreach (var m in Model.Meals)
+                                    {
+                                        <tr><td>@m.LoggedAt.ToString("dd MMM h:mm tt")</td><td>@m.MealType</td><td>@m.FoodItems</td><td>@m.Calories kcal</td></tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+            </div>
+            <div class="tab-pane fade" id="tabMetrics">
+                <div class="panel flush">
+                    @if (!Model.Metrics.Any()) { <div class="empty"><i class="bi bi-heart-pulse"></i><p>No measurements recorded.</p></div> }
+                    else
+                    {
+                        <div class="table-responsive">
+                            <table class="table align-middle mb-0">
+                                <thead><tr><th>Date</th><th>Weight</th><th>BMI</th><th>BP</th><th>HR</th><th>Sleep</th><th>Notes</th></tr></thead>
+                                <tbody>
+                                    @foreach (var m in Model.Metrics)
+                                    {
+                                        <tr>
+                                            <td>@m.RecordedAt.ToString("dd MMM yyyy")</td>
+                                            <td>@m.WeightKg.ToString("0.0") kg</td>
+                                            <td><span class="pill tone-@HealthCalculator.BmiTone(m.Bmi)">@m.Bmi.ToString("0.0")</span></td>
+                                            <td>@if (m.SystolicBp.HasValue) { <span class="pill tone-@(HealthCalculator.IsHighBloodPressure(m.SystolicBp, m.DiastolicBp) ? "alert" : "good")">@m.SystolicBp/@m.DiastolicBp</span> } else { <span>–</span> }</td>
+                                            <td>@(m.RestingHeartRate?.ToString() ?? "–")</td>
+                                            <td>@(m.SleepHours.HasValue ? m.SleepHours + " h" : "–")</td>
+                                            <td class="small text-muted">@m.Notes</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+            </div>
+            <div class="tab-pane fade" id="tabPlans">
+                @if (!Model.WorkoutPlans.Any() && !Model.DietPlans.Any())
+                {
+                    <div class="panel"><div class="empty"><i class="bi bi-clipboard2"></i><p>No plans created yet.</p></div></div>
+                }
+                @foreach (var plan in Model.WorkoutPlans)
+                {
+                    <partial name="_WorkoutPlanCard" model="plan" view-data="workoutCardData" />
+                }
+                @foreach (var plan in Model.DietPlans)
+                {
+                    <partial name="_DietPlanCard" model="plan" view-data="workoutCardData" />
+                }
+                <a asp-action="Plans" class="small">Manage plans (activate, deactivate, delete) <i class="bi bi-arrow-right"></i></a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-4">
+        <div class="panel">
+            <div class="panel-head"><h2>Send feedback</h2></div>
+            <form asp-action="GiveFeedback" method="post" novalidate>
+                <input type="hidden" asp-for="NewFeedback.ClientId" />
+                <textarea asp-for="NewFeedback.Message" class="form-control" rows="4" placeholder="Great consistency this week! Try adding 5 more minutes to your runs."></textarea>
+                <span asp-validation-for="NewFeedback.Message" class="field-validation-error"></span>
+                <button type="submit" class="btn btn-primary w-100 mt-3"><i class="bi bi-send"></i> Send feedback</button>
+            </form>
+        </div>
+
+        <div class="panel">
+            <div class="panel-head"><h2>Feedback history</h2></div>
+            @if (!Model.Feedback.Any()) { <div class="empty"><i class="bi bi-chat-left"></i><p>No feedback yet.</p></div> }
+            @foreach (var f in Model.Feedback)
+            {
+                <div class="feedback-quote">
+                    <p>@f.Message</p>
+                    <small>@f.Trainer?.FullName · @f.CreatedAt.TimeAgo()</small>
+                </div>
+            }
+        </div>
+
+        <div class="panel">
+            <div class="panel-head"><h2>Appointments</h2></div>
+            @if (!Model.Appointments.Any()) { <div class="empty"><i class="bi bi-calendar"></i><p>No appointments with you.</p></div> }
+            <ul class="list-plain">
+                @foreach (var a in Model.Appointments)
+                {
+                    <li class="list-row">
+                        <div class="date-tile"><div class="d">@a.ScheduledAt.Day</div><div class="m">@a.ScheduledAt.ToString("MMM").ToUpper()</div></div>
+                        <div class="grow">
+                            <div class="title">@a.Type.GetDisplayName()</div>
+                            <div class="meta">@a.ScheduledAt.ToString("ddd h:mm tt")</div>
+                        </div>
+                        <span class="pill tone-@a.Status.StatusTone()">@a.Status</span>
+                    </li>
+                }
+            </ul>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

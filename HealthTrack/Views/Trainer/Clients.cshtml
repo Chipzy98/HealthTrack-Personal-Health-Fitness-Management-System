@@ -1,0 +1,57 @@
+@model List<ClientSummary>
+@{
+    ViewData["Title"] = "My clients";
+}
+<div class="page-head">
+    <div>
+        <h1>My clients</h1>
+        <p>@Model.Count client(s) assigned to you.</p>
+    </div>
+    <input type="search" id="clientSearch" class="form-control" style="max-width:260px" placeholder="Search clients…" aria-label="Search clients" />
+</div>
+
+@if (!Model.Any())
+{
+    <div class="panel"><div class="empty"><i class="bi bi-people"></i><p>No clients are assigned to you yet.</p></div></div>
+}
+<div class="row g-3" id="clientCards">
+    @foreach (var c in Model)
+    {
+        <div class="col-md-6 col-xl-4" data-name="@c.FullName.ToLower()">
+            <div class="panel h-100 mb-0">
+                <div class="d-flex align-items-center gap-3 mb-3">
+                    <span class="avatar lg">@string.Concat(c.FullName.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(p => char.ToUpper(p[0])))</span>
+                    <div class="grow">
+                        <div class="fw-semibold">@c.FullName</div>
+                        <div class="small text-muted">@c.Email</div>
+                    </div>
+                    @if (!c.IsActive) { <span class="pill tone-neutral">Inactive</span> }
+                    else if (c.NeedsAttention) { <span class="pill tone-warn">Follow up</span> }
+                    else { <span class="pill tone-good">On track</span> }
+                </div>
+                <div class="row text-center g-2 mb-3">
+                    <div class="col-4"><div class="small text-muted">Weight</div><div class="fw-semibold">@(c.LatestWeight?.ToString("0.0") ?? "–")</div></div>
+                    <div class="col-4"><div class="small text-muted">BMI</div><div class="fw-semibold">@(c.LatestBmi?.ToString("0.0") ?? "–")</div></div>
+                    <div class="col-4"><div class="small text-muted">This week</div><div class="fw-semibold">@c.WorkoutsThisWeek</div></div>
+                </div>
+                <div class="d-flex gap-2 flex-wrap">
+                    <a class="btn btn-sm btn-primary" asp-action="ClientDetails" asp-route-id="@c.ClientId">Details</a>
+                    <a class="btn btn-sm btn-outline-primary" asp-controller="Progress" asp-action="Index" asp-route-clientId="@c.ClientId">Progress</a>
+                    <a class="btn btn-sm btn-outline-primary" asp-action="CreateWorkoutPlan" asp-route-clientId="@c.ClientId">+ Workout</a>
+                    <a class="btn btn-sm btn-outline-primary" asp-action="CreateDietPlan" asp-route-clientId="@c.ClientId">+ Diet</a>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@section Scripts {
+    <script>
+        document.getElementById('clientSearch').addEventListener('input', function () {
+            const term = this.value.trim().toLowerCase();
+            document.querySelectorAll('#clientCards [data-name]').forEach(function (card) {
+                card.style.display = card.dataset.name.includes(term) ? '' : 'none';
+            });
+        });
+    </script>
+}

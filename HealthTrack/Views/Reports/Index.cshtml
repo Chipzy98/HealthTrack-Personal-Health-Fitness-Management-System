@@ -1,0 +1,207 @@
+@model ReportViewModel
+@{
+    ViewData["Title"] = "Reports";
+    int totalAppointments = Model.AppointmentsByStatus.Values.Sum();
+}
+<div class="page-head">
+    <div>
+        <h1>Reports &amp; analytics</h1>
+        <p>@(Model.IsAdmin ? "All clients in the system" : "Your clients") · @Model.From.ToString("dd MMM yyyy") – @Model.To.ToString("dd MMM yyyy")</p>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+        <a class="btn btn-outline-primary" asp-action="ExportCsv" asp-route-from="@Model.From.ToString("yyyy-MM-dd")" asp-route-to="@Model.To.ToString("yyyy-MM-dd")"><i class="bi bi-filetype-csv"></i> Export CSV</a>
+        <button type="button" class="btn btn-outline-primary" onclick="window.print()"><i class="bi bi-printer"></i> Print</button>
+    </div>
+</div>
+
+<form asp-action="Index" method="get" class="filter-bar">
+    <div>
+        <label class="form-label small" for="from">From</label>
+        <input type="date" id="from" name="from" class="form-control" value="@Model.From.ToString("yyyy-MM-dd")" />
+    </div>
+    <div>
+        <label class="form-label small" for="to">To</label>
+        <input type="date" id="to" name="to" class="form-control" value="@Model.To.ToString("yyyy-MM-dd")" max="@DateTime.Today.ToString("yyyy-MM-dd")" />
+    </div>
+    <button class="btn btn-primary" type="submit">Update</button>
+    <a class="chip-link" asp-action="Index" asp-route-from="@DateTime.Today.AddDays(-6).ToString("yyyy-MM-dd")" asp-route-to="@DateTime.Today.ToString("yyyy-MM-dd")">Last 7 days</a>
+    <a class="chip-link" asp-action="Index" asp-route-from="@DateTime.Today.AddDays(-29).ToString("yyyy-MM-dd")" asp-route-to="@DateTime.Today.ToString("yyyy-MM-dd")">Last 30 days</a>
+    <a class="chip-link" asp-action="Index" asp-route-from="@DateTime.Today.AddDays(-89).ToString("yyyy-MM-dd")" asp-route-to="@DateTime.Today.ToString("yyyy-MM-dd")">Last 90 days</a>
+</form>
+
+@* Engagement statistics *@
+<div class="vitals mb-4">
+    <div class="vital"><div class="label">Active clients</div><div class="value">@Model.ActiveClients<small>/ @Model.TotalClients</small></div><div class="sub">Logged at least one activity</div></div>
+    <div class="vital"><div class="label">Workouts logged</div><div class="value">@Model.TotalWorkoutLogs</div><div class="sub">@Model.TotalMealLogs meals · @Model.TotalMetricEntries measurements</div></div>
+    <div class="vital"><div class="label">Sign-ins</div><div class="value">@Model.Logins</div><div class="sub">In this period</div></div>
+    <div class="vital"><div class="label">Appointments</div><div class="value">@totalAppointments</div><div class="sub">@(Model.AppointmentsByStatus.TryGetValue(AppointmentStatus.Completed, out var done) ? done : 0) completed</div></div>
+</div>
+
+<div class="row g-4">
+    <div class="col-xl-8">
+        <div class="panel">
+            <div class="panel-head"><h2>Daily engagement</h2><span class="small text-muted">Workout, meal &amp; measurement entries per day</span></div>
+            <div class="chart-box"><canvas id="engagementChart" role="img" aria-label="Daily engagement"></canvas></div>
+        </div>
+    </div>
+    <div class="col-xl-4">
+        <div class="panel">
+            <div class="panel-head"><h2>Appointments by status</h2></div>
+            @if (totalAppointments == 0)
+            {
+                <div class="empty"><i class="bi bi-calendar"></i><p>No appointments in this period.</p></div>
+            }
+            else
+            {
+                <div class="chart-box"><canvas id="appointmentChart" role="img" aria-label="Appointments by status"></canvas></div>
+            }
+        </div>
+    </div>
+</div>
+
+<div class="panel flush">
+    <div class="panel-head"><h2>Client performance</h2><span class="small text-muted">Engagement = active days ÷ days in period</span></div>
+    @if (!Model.ClientPerformance.Any())
+    {
+        <div class="empty"><i class="bi bi-people"></i><p>No clients to report on.</p></div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Client</th>
+                        @if (Model.IsAdmin) { <th>Trainer</th> }
+                        <th>Workouts</th><th>Minutes</th><th>kcal burned</th><th>Meals</th><th>Avg intake</th><th>Weight change</th><th>BMI</th><th>Engagement</th><th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var r in Model.ClientPerformance)
+                    {
+                        <tr>
+                            <td class="fw-semibold">@r.ClientName</td>
+                            @if (Model.IsAdmin) { <td>@(r.TrainerName ?? "–")</td> }
+                            <td>@r.Workouts</td>
+                            <td>@r.TotalMinutes</td>
+                            <td>@r.CaloriesBurned</td>
+                            <td>@r.MealsLogged</td>
+                            <td>@(r.AverageDailyIntake > 0 ? r.AverageDailyIntake + " kcal" : "–")</td>
+                            <td>
+                                @if (r.WeightChange.HasValue)
+                                {
+                                    <span class="@(r.WeightChange < 0 ? "delta-down" : r.WeightChange > 0 ? "delta-up" : "")">@(r.WeightChange > 0 ? "+" : "")@r.WeightChange kg</span>
+                                }
+                                else { <span>–</span> }
+                            </td>
+                            <td>@if (r.CurrentBmi.HasValue) { <span class="pill tone-@HealthCalculator.BmiTone(r.CurrentBmi.Value)">@r.CurrentBmi.Value.ToString("0.0")</span> } else { <span>–</span> }</td>
+                            <td style="min-width:140px">
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="progress flex-grow-1" style="height:6px">
+                                        <div class="progress-bar" style="width:@r.EngagementPercent%;background:@(r.EngagementPercent >= 50 ? "var(--teal)" : r.EngagementPercent >= 25 ? "var(--amber)" : "var(--rose)")"></div>
+                                    </div>
+                                    <span class="small">@r.EngagementPercent%</span>
+                                </div>
+                            </td>
+                            <td><a class="btn btn-sm btn-outline-primary" asp-controller="Progress" asp-action="Index" asp-route-clientId="@r.ClientId" title="Progress"><i class="bi bi-graph-up"></i></a></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+<div class="row g-4">
+    <div class="col-xl-6">
+        <div class="panel flush">
+            <div class="panel-head"><h2>Popular routines (logged by clients)</h2></div>
+            @if (!Model.PopularRoutines.Any())
+            {
+                <div class="empty"><i class="bi bi-activity"></i><p>No workouts in this period.</p></div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table align-middle mb-0">
+                        <thead><tr><th>Exercise</th><th>Times logged</th><th>Total minutes</th><th>Clients</th></tr></thead>
+                        <tbody>
+                            @foreach (var r in Model.PopularRoutines)
+                            {
+                                <tr><td class="fw-semibold">@r.Name</td><td>@r.TimesLogged</td><td>@r.TotalMinutes</td><td>@r.UniqueClients</td></tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+    <div class="col-xl-6">
+        <div class="panel flush">
+            <div class="panel-head"><h2>Most assigned exercises (in plans)</h2></div>
+            @if (!Model.MostAssignedExercises.Any())
+            {
+                <div class="empty"><i class="bi bi-clipboard2"></i><p>No plan exercises yet.</p></div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table align-middle mb-0">
+                        <thead><tr><th>Exercise</th><th>Times assigned</th><th>Planned minutes</th><th>Clients</th></tr></thead>
+                        <tbody>
+                            @foreach (var r in Model.MostAssignedExercises)
+                            {
+                                <tr><td class="fw-semibold">@r.Name</td><td>@r.TimesLogged</td><td>@r.TotalMinutes</td><td>@r.UniqueClients</td></tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@if (Model.IsAdmin && Model.TrainerPerformance.Any())
+{
+    <div class="panel flush">
+        <div class="panel-head"><h2>Trainer performance</h2></div>
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead><tr><th>Trainer</th><th>Specialisation</th><th>Clients</th><th>Plans created</th><th>Feedback given</th><th>Sessions completed</th></tr></thead>
+                <tbody>
+                    @foreach (var t in Model.TrainerPerformance)
+                    {
+                        <tr><td class="fw-semibold">@t.TrainerName</td><td>@t.Specialization</td><td>@t.Clients</td><td>@t.PlansCreated</td><td>@t.FeedbackGiven</td><td>@t.AppointmentsCompleted</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script>
+        applyChartDefaults();
+        new Chart(document.getElementById('engagementChart'), {
+            type: 'line',
+            data: {
+                labels: @Json.Serialize(Model.EngagementLabels),
+                datasets: [{ label: 'Entries', data: @Json.Serialize(Model.EngagementValues), borderColor: '#0d8f7f', backgroundColor: 'rgba(13,143,127,.12)', fill: true, tension: .35, pointRadius: 2 }]
+            },
+            options: { plugins: { legend: { display: false } }, scales: { x: { grid: { display: false }, ticks: { maxTicksLimit: 12 } }, y: { beginAtZero: true, ticks: { precision: 0 } } } }
+        });
+
+        const appointmentCanvas = document.getElementById('appointmentChart');
+        if (appointmentCanvas) {
+            new Chart(appointmentCanvas, {
+                type: 'doughnut',
+                data: {
+                    labels: @Json.Serialize(Model.AppointmentsByStatus.Keys.Select(k => k.ToString())),
+                    datasets: [{ data: @Json.Serialize(Model.AppointmentsByStatus.Values), backgroundColor: ['#d98a04', '#0d8f7f', '#c8364f', '#0f3b35'] }]
+                },
+                options: { cutout: '62%', plugins: { legend: { position: 'bottom' } } }
+            });
+        }
+    </script>
+}

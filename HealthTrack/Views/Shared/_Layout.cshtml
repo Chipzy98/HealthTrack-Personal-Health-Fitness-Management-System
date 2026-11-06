@@ -1,0 +1,150 @@
+@*
+    Main layout.
+    - Signed-in users get the application shell: role-specific sidebar + top bar with the notification bell.
+    - Visitors get the lightweight public shell (landing, sign in, register).
+*@
+@{
+    bool signedIn = User.Identity?.IsAuthenticated == true;
+    string fullName = User.Identity?.Name ?? "";
+    string role = User.GetRole()?.ToString() ?? "";
+    string initials = string.Concat(fullName.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(p => char.ToUpper(p[0])));
+    string greeting = DateTime.Now.Hour < 12 ? "Good morning" : DateTime.Now.Hour < 17 ? "Good afternoon" : "Good evening";
+}
+@functions {
+    // Returns "active" when the current page belongs to the given controller (and optional actions).
+    string Active(string controller, params string[] actions)
+    {
+        string currentController = ViewContext.RouteData.Values["controller"]?.ToString();
+        string currentAction = ViewContext.RouteData.Values["action"]?.ToString();
+        if (!string.Equals(currentController, controller, StringComparison.OrdinalIgnoreCase)) return "";
+        if (actions.Length == 0) return "active";
+        return actions.Any(a => string.Equals(a, currentAction, StringComparison.OrdinalIgnoreCase)) ? "active" : "";
+    }
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] · HealthTrack</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Outfit:wght@500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.3/font/bootstrap-icons.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body class="@(signedIn ? "" : "public-shell")">
+@if (signedIn)
+{
+    <div class="app">
+        <aside class="sidebar" id="sidebar">
+            <a class="brand" asp-controller="Home" asp-action="Index">
+                <span class="brand-mark"><i class="bi bi-heart-pulse"></i></span> HealthTrack
+            </a>
+
+            @if (User.IsInRole(nameof(UserRole.Client)))
+            {
+                <div class="nav-group">
+                    <div class="nav-group-title">My health</div>
+                    <a class="side-link @Active("Client", "Dashboard")" asp-controller="Client" asp-action="Dashboard"><i class="bi bi-grid-1x2"></i> Dashboard</a>
+                    <a class="side-link @Active("Client", "MyPlans")" asp-controller="Client" asp-action="MyPlans"><i class="bi bi-clipboard2-pulse"></i> My plans</a>
+                    <a class="side-link @Active("Client", "WorkoutLogs", "LogWorkout")" asp-controller="Client" asp-action="WorkoutLogs"><i class="bi bi-activity"></i> Workouts</a>
+                    <a class="side-link @Active("Client", "MealLogs", "LogMeal")" asp-controller="Client" asp-action="MealLogs"><i class="bi bi-egg-fried"></i> Meals</a>
+                    <a class="side-link @Active("Client", "Metrics", "AddMetric")" asp-controller="Client" asp-action="Metrics"><i class="bi bi-heart-pulse"></i> Health metrics</a>
+                    <a class="side-link @Active("Progress")" asp-controller="Progress" asp-action="Index"><i class="bi bi-graph-up-arrow"></i> Progress</a>
+                </div>
+                <div class="nav-group">
+                    <div class="nav-group-title">Schedule</div>
+                    <a class="side-link @Active("Appointments")" asp-controller="Appointments" asp-action="Index"><i class="bi bi-calendar-event"></i> Appointments</a>
+                    <a class="side-link @Active("Notifications")" asp-controller="Notifications" asp-action="Index"><i class="bi bi-bell"></i> Notifications</a>
+                </div>
+            }
+            else if (User.IsInRole(nameof(UserRole.Trainer)))
+            {
+                <div class="nav-group">
+                    <div class="nav-group-title">Coaching</div>
+                    <a class="side-link @Active("Trainer", "Dashboard")" asp-controller="Trainer" asp-action="Dashboard"><i class="bi bi-grid-1x2"></i> Dashboard</a>
+                    <a class="side-link @Active("Trainer", "Clients", "ClientDetails")@Active("Progress")" asp-controller="Trainer" asp-action="Clients"><i class="bi bi-people"></i> My clients</a>
+                    <a class="side-link @Active("Trainer", "Plans", "CreateWorkoutPlan", "CreateDietPlan")" asp-controller="Trainer" asp-action="Plans"><i class="bi bi-clipboard2-pulse"></i> Plans</a>
+                    <a class="side-link @Active("Appointments")" asp-controller="Appointments" asp-action="Index"><i class="bi bi-calendar-event"></i> Appointments</a>
+                </div>
+                <div class="nav-group">
+                    <div class="nav-group-title">Insights</div>
+                    <a class="side-link @Active("Reports")" asp-controller="Reports" asp-action="Index"><i class="bi bi-bar-chart-line"></i> Reports</a>
+                    <a class="side-link @Active("Notifications")" asp-controller="Notifications" asp-action="Index"><i class="bi bi-bell"></i> Notifications</a>
+                </div>
+            }
+            else if (User.IsInRole(nameof(UserRole.Admin)))
+            {
+                <div class="nav-group">
+                    <div class="nav-group-title">Administration</div>
+                    <a class="side-link @Active("Admin", "Dashboard")" asp-controller="Admin" asp-action="Dashboard"><i class="bi bi-grid-1x2"></i> Dashboard</a>
+                    <a class="side-link @Active("Admin", "Users", "CreateUser", "EditUser")@Active("Progress")" asp-controller="Admin" asp-action="Users"><i class="bi bi-people"></i> Users</a>
+                    <a class="side-link @Active("Appointments")" asp-controller="Appointments" asp-action="Index"><i class="bi bi-calendar-event"></i> Appointments</a>
+                </div>
+                <div class="nav-group">
+                    <div class="nav-group-title">Insights</div>
+                    <a class="side-link @Active("Reports")" asp-controller="Reports" asp-action="Index"><i class="bi bi-bar-chart-line"></i> Reports</a>
+                    <a class="side-link @Active("Admin", "ActivityLogs")" asp-controller="Admin" asp-action="ActivityLogs"><i class="bi bi-list-check"></i> Activity log</a>
+                    <a class="side-link @Active("Notifications")" asp-controller="Notifications" asp-action="Index"><i class="bi bi-bell"></i> Notifications</a>
+                </div>
+            }
+
+            <div class="nav-group">
+                <div class="nav-group-title">Account</div>
+                <a class="side-link @Active("Account", "Profile", "ChangePassword")" asp-controller="Account" asp-action="Profile"><i class="bi bi-person-circle"></i> Profile</a>
+                <form asp-controller="Account" asp-action="Logout" method="post">
+                    <button type="submit" class="side-link w-100 border-0 bg-transparent text-start"><i class="bi bi-box-arrow-left"></i> Sign out</button>
+                </form>
+            </div>
+
+            <div class="sidebar-foot">
+                <i class="bi bi-shield-lock"></i> Health data encrypted at rest
+            </div>
+        </aside>
+
+        <div class="main">
+            <header class="topbar">
+                <button type="button" class="icon-btn menu-toggle" data-toggle-sidebar aria-label="Open menu"><i class="bi bi-list"></i></button>
+                <div class="greeting">@greeting, @fullName.Split(' ')[0]</div>
+                <div class="spacer"></div>
+                @await Component.InvokeAsync("NotificationBell")
+                <a class="user-chip text-decoration-none text-reset" asp-controller="Account" asp-action="Profile">
+                    <span class="avatar">@initials</span>
+                    <span class="d-none d-md-block">
+                        @fullName<br /><small>@role</small>
+                    </span>
+                </a>
+            </header>
+
+            <main class="content">
+                <partial name="_Alerts" />
+                @RenderBody()
+            </main>
+        </div>
+    </div>
+}
+else
+{
+    <nav class="public-nav">
+        <a class="brand display-font fs-4 text-decoration-none" asp-controller="Home" asp-action="Index">
+            <span class="brand-mark"><i class="bi bi-heart-pulse"></i></span> HealthTrack
+        </a>
+        <div class="d-flex gap-2">
+            <a class="btn btn-outline-primary" asp-controller="Account" asp-action="Login">Sign in</a>
+            <a class="btn btn-primary" asp-controller="Account" asp-action="Register">Create account</a>
+        </div>
+    </nav>
+    <main class="public-main">
+        <partial name="_Alerts" />
+        @RenderBody()
+    </main>
+}
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

@@ -1,0 +1,135 @@
+@model DietPlanFormViewModel
+@{
+    ViewData["Title"] = "New diet plan";
+    var mealOptions = Enum.GetValues<MealType>();
+}
+<div class="page-head">
+    <div>
+        <h1>New diet plan</h1>
+        <p>Set a daily calorie target and a meal schedule. Clients receive meal reminders at these times.</p>
+    </div>
+    <a class="btn btn-outline-primary" asp-action="Plans"><i class="bi bi-arrow-left"></i> Back</a>
+</div>
+
+<form asp-action="CreateDietPlan" method="post" novalidate>
+    <div asp-validation-summary="ModelOnly" class="mb-3"></div>
+    <div class="panel">
+        <div class="panel-head"><h2>Plan details</h2></div>
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label asp-for="ClientId" class="form-label"></label>
+                <select asp-for="ClientId" asp-items="Model.Clients" class="form-select">
+                    <option value="">Choose a client…</option>
+                </select>
+                <span asp-validation-for="ClientId" class="field-validation-error"></span>
+            </div>
+            <div class="col-md-6">
+                <label asp-for="Title" class="form-label"></label>
+                <input asp-for="Title" class="form-control" placeholder="e.g. Balanced 1800 kcal plan" />
+                <span asp-validation-for="Title" class="field-validation-error"></span>
+            </div>
+            <div class="col-md-4">
+                <label asp-for="DailyCalorieTarget" class="form-label"></label>
+                <input asp-for="DailyCalorieTarget" class="form-control" min="800" max="6000" step="50" />
+                <span asp-validation-for="DailyCalorieTarget" class="field-validation-error"></span>
+            </div>
+            <div class="col-md-4">
+                <label asp-for="StartDate" class="form-label"></label>
+                <input asp-for="StartDate" class="form-control" />
+                <span asp-validation-for="StartDate" class="field-validation-error"></span>
+            </div>
+            <div class="col-md-4">
+                <label asp-for="EndDate" class="form-label"></label>
+                <input asp-for="EndDate" class="form-control" />
+                <span asp-validation-for="EndDate" class="field-validation-error"></span>
+            </div>
+            <div class="col-12">
+                <label asp-for="Description" class="form-label"></label>
+                <textarea asp-for="Description" class="form-control" rows="2" placeholder="Hydration, foods to avoid, portion guidance"></textarea>
+                <span asp-validation-for="Description" class="field-validation-error"></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="panel">
+        <div class="panel-head">
+            <h2>Meal schedule</h2>
+            <div class="d-flex align-items-center gap-3">
+                <span class="small text-muted">Planned: <strong id="plannedTotal">0</strong> kcal</span>
+                <button type="button" class="btn btn-sm btn-outline-primary" id="addItem"><i class="bi bi-plus-lg"></i> Add meal</button>
+            </div>
+        </div>
+        <div id="itemRows">
+            @for (int i = 0; i < Model.Items.Count; i++)
+            {
+                <div class="dynamic-row">
+                    <div class="row g-2 align-items-end">
+                        <div class="col-auto"><span class="row-number">@(i + 1)</span></div>
+                        <div class="col-md-2">
+                            <label asp-for="Items[i].MealType" class="form-label small">Meal</label>
+                            <select asp-for="Items[i].MealType" asp-items="Html.GetEnumSelectList<MealType>()" class="form-select"></select>
+                        </div>
+                        <div class="col-md-2">
+                            <label asp-for="Items[i].ScheduledTime" class="form-label small">Time</label>
+                            <input asp-for="Items[i].ScheduledTime" type="time" asp-format="{0:hh\:mm}" class="form-control" />
+                        </div>
+                        <div class="col">
+                            <label asp-for="Items[i].Description" class="form-label small">What to eat</label>
+                            <input asp-for="Items[i].Description" class="form-control" placeholder="e.g. Oats with banana and milk" />
+                            <span asp-validation-for="Items[i].Description" class="field-validation-error"></span>
+                        </div>
+                        <div class="col-md-2">
+                            <label asp-for="Items[i].Calories" class="form-label small">kcal</label>
+                            <input asp-for="Items[i].Calories" class="form-control item-calories" min="0" max="3000" />
+                        </div>
+                        <div class="col-auto"><button type="button" class="btn btn-outline-danger remove-row" aria-label="Remove"><i class="bi bi-x-lg"></i></button></div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+
+    <button type="submit" class="btn btn-primary btn-lg"><i class="bi bi-check2"></i> Save plan &amp; notify client</button>
+</form>
+
+<template id="itemTemplate">
+    <div class="dynamic-row">
+        <div class="row g-2 align-items-end">
+            <div class="col-auto"><span class="row-number"></span></div>
+            <div class="col-md-2">
+                <label class="form-label small">Meal</label>
+                <select class="form-select" name="Items[__i__].MealType">
+                    @foreach (var m in mealOptions)
+                    {
+                        <option value="@((int)m)">@m</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-2"><label class="form-label small">Time</label><input class="form-control" type="time" name="Items[__i__].ScheduledTime" value="16:00" /></div>
+            <div class="col"><label class="form-label small">What to eat</label><input class="form-control" name="Items[__i__].Description" maxlength="300" /></div>
+            <div class="col-md-2"><label class="form-label small">kcal</label><input class="form-control item-calories" type="number" name="Items[__i__].Calories" value="200" min="0" max="3000" /></div>
+            <div class="col-auto"><button type="button" class="btn btn-outline-danger remove-row" aria-label="Remove"><i class="bi bi-x-lg"></i></button></div>
+        </div>
+    </div>
+</template>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        initDynamicRows('itemRows', 'itemTemplate', 'addItem');
+
+        // Keep a running total of planned calories against the daily target.
+        (function () {
+            const rows = document.getElementById('itemRows');
+            const total = document.getElementById('plannedTotal');
+            function update() {
+                let sum = 0;
+                rows.querySelectorAll('.item-calories').forEach(el => sum += parseInt(el.value, 10) || 0);
+                total.textContent = sum;
+            }
+            rows.addEventListener('input', update);
+            new MutationObserver(update).observe(rows, { childList: true });
+            update();
+        })();
+    </script>
+}

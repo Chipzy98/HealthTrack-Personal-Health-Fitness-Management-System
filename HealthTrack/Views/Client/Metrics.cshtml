@@ -1,0 +1,68 @@
+@model List<HealthMetric>
+@{
+    ViewData["Title"] = "Health metrics";
+}
+<div class="page-head">
+    <div>
+        <h1>Health metrics</h1>
+        <p>Weight, BMI, blood pressure and other measurements you've recorded.</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a class="btn btn-outline-primary" asp-controller="Progress" asp-action="Index"><i class="bi bi-graph-up-arrow"></i> View trends</a>
+        <a class="btn btn-primary" asp-action="AddMetric"><i class="bi bi-plus-lg"></i> Add measurement</a>
+    </div>
+</div>
+
+<div class="panel flush">
+    <div class="panel-head"><h2>All measurements</h2><span class="small text-muted"><i class="bi bi-lock"></i> Notes are encrypted</span></div>
+    @if (!Model.Any())
+    {
+        <div class="empty"><i class="bi bi-heart-pulse"></i><p>No measurements yet. Add your first one to start tracking.</p></div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead>
+                    <tr><th>Date</th><th>Weight</th><th>BMI</th><th>Body fat</th><th>Blood pressure</th><th>Resting HR</th><th>Sleep</th><th>Notes</th><th></th></tr>
+                </thead>
+                <tbody>
+                    @for (int i = 0; i < Model.Count; i++)
+                    {
+                        var m = Model[i];
+                        var previous = i + 1 < Model.Count ? Model[i + 1] : null; // list is newest first
+                        double? delta = previous != null ? Math.Round(m.WeightKg - previous.WeightKg, 1) : null;
+                        bool highBp = HealthCalculator.IsHighBloodPressure(m.SystolicBp, m.DiastolicBp);
+                        <tr>
+                            <td>@m.RecordedAt.ToString("dd MMM yyyy")<div class="small text-muted">@m.RecordedAt.ToString("h:mm tt")</div></td>
+                            <td>
+                                <strong>@m.WeightKg.ToString("0.0") kg</strong>
+                                @if (delta.HasValue && delta != 0)
+                                {
+                                    <div class="small @(delta < 0 ? "delta-down" : "delta-up")">@(delta > 0 ? "+" : "")@delta</div>
+                                }
+                            </td>
+                            <td><span class="pill tone-@HealthCalculator.BmiTone(m.Bmi)" title="@HealthCalculator.BmiCategory(m.Bmi)">@m.Bmi.ToString("0.0")</span></td>
+                            <td>@(m.BodyFatPercent.HasValue ? m.BodyFatPercent.Value.ToString("0.0") + "%" : "–")</td>
+                            <td>
+                                @if (m.SystolicBp.HasValue)
+                                {
+                                    <span class="pill tone-@(highBp ? "alert" : "good")">@m.SystolicBp/@m.DiastolicBp</span>
+                                }
+                                else { <span>–</span> }
+                            </td>
+                            <td>@(m.RestingHeartRate.HasValue ? m.RestingHeartRate + " bpm" : "–")</td>
+                            <td>@(m.SleepHours.HasValue ? m.SleepHours + " h" : "–")</td>
+                            <td class="small text-muted" style="max-width:220px">@m.Notes</td>
+                            <td class="text-end">
+                                <form asp-action="DeleteMetric" asp-route-id="@m.Id" method="post" data-confirm="Delete this measurement?">
+                                    <button class="btn btn-sm btn-outline-danger" type="submit" aria-label="Delete"><i class="bi bi-trash"></i></button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

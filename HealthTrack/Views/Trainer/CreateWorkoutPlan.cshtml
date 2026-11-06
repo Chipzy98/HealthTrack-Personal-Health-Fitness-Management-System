@@ -1,0 +1,121 @@
+@model WorkoutPlanFormViewModel
+@{
+    ViewData["Title"] = "New workout plan";
+    // Monday..Sunday order for the day dropdown
+    var dayOptions = Enumerable.Range(1, 7).Select(i => (DayOfWeek)(i % 7)).ToList();
+    var dayItems = dayOptions.Select(d => new SelectListItem(d.ToString(), ((int)d).ToString())).ToList();
+}
+<div class="page-head">
+    <div>
+        <h1>New workout plan</h1>
+        <p>Build a weekly routine. The client is notified as soon as you save it.</p>
+    </div>
+    <a class="btn btn-outline-primary" asp-action="Plans"><i class="bi bi-arrow-left"></i> Back</a>
+</div>
+
+<form asp-action="CreateWorkoutPlan" method="post" novalidate>
+    <div asp-validation-summary="ModelOnly" class="mb-3"></div>
+    <div class="panel">
+        <div class="panel-head"><h2>Plan details</h2></div>
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label asp-for="ClientId" class="form-label"></label>
+                <select asp-for="ClientId" asp-items="Model.Clients" class="form-select">
+                    <option value="">Choose a client…</option>
+                </select>
+                <span asp-validation-for="ClientId" class="field-validation-error"></span>
+            </div>
+            <div class="col-md-6">
+                <label asp-for="Title" class="form-label"></label>
+                <input asp-for="Title" class="form-control" placeholder="e.g. 4-week fat loss starter" />
+                <span asp-validation-for="Title" class="field-validation-error"></span>
+            </div>
+            <div class="col-md-6">
+                <label asp-for="Goal" class="form-label"></label>
+                <input asp-for="Goal" class="form-control" placeholder="e.g. Lose 3 kg, improve stamina" />
+                <span asp-validation-for="Goal" class="field-validation-error"></span>
+            </div>
+            <div class="col-md-3">
+                <label asp-for="StartDate" class="form-label"></label>
+                <input asp-for="StartDate" class="form-control" />
+                <span asp-validation-for="StartDate" class="field-validation-error"></span>
+            </div>
+            <div class="col-md-3">
+                <label asp-for="EndDate" class="form-label"></label>
+                <input asp-for="EndDate" class="form-control" />
+                <span asp-validation-for="EndDate" class="field-validation-error"></span>
+            </div>
+            <div class="col-12">
+                <label asp-for="Description" class="form-label"></label>
+                <textarea asp-for="Description" class="form-control" rows="2" placeholder="Instructions, warm-up, safety notes"></textarea>
+                <span asp-validation-for="Description" class="field-validation-error"></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="panel">
+        <div class="panel-head">
+            <h2>Exercises</h2>
+            <button type="button" class="btn btn-sm btn-outline-primary" id="addExercise"><i class="bi bi-plus-lg"></i> Add exercise</button>
+        </div>
+        <div id="exerciseRows">
+            @for (int i = 0; i < Model.Exercises.Count; i++)
+            {
+                <div class="dynamic-row">
+                    <div class="row g-2 align-items-end">
+                        <div class="col-auto"><span class="row-number">@(i + 1)</span></div>
+                        <div class="col-md-3">
+                            <label asp-for="Exercises[i].Name" class="form-label small">Exercise</label>
+                            <input asp-for="Exercises[i].Name" class="form-control" placeholder="e.g. Squats" />
+                            <span asp-validation-for="Exercises[i].Name" class="field-validation-error"></span>
+                        </div>
+                        <div class="col-md-2">
+                            <label asp-for="Exercises[i].Day" class="form-label small">Day</label>
+                            <select asp-for="Exercises[i].Day" asp-items="dayItems" class="form-select"></select>
+                        </div>
+                        <div class="col"><label asp-for="Exercises[i].Sets" class="form-label small">Sets</label><input asp-for="Exercises[i].Sets" class="form-control" min="0" max="20" /></div>
+                        <div class="col"><label asp-for="Exercises[i].Reps" class="form-label small">Reps</label><input asp-for="Exercises[i].Reps" class="form-control" min="0" max="100" /></div>
+                        <div class="col"><label asp-for="Exercises[i].DurationMinutes" class="form-label small">Minutes</label><input asp-for="Exercises[i].DurationMinutes" class="form-control" min="0" max="300" /></div>
+                        <div class="col-md-3"><label asp-for="Exercises[i].Notes" class="form-label small">Notes</label><input asp-for="Exercises[i].Notes" class="form-control" placeholder="Rest 60s" /></div>
+                        <div class="col-auto"><button type="button" class="btn btn-outline-danger remove-row" aria-label="Remove"><i class="bi bi-x-lg"></i></button></div>
+                    </div>
+                </div>
+            }
+        </div>
+        <div class="form-text mt-2">Use sets &amp; reps for strength work and minutes for cardio. Rows without a name are ignored.</div>
+    </div>
+
+    <button type="submit" class="btn btn-primary btn-lg"><i class="bi bi-check2"></i> Save plan &amp; notify client</button>
+</form>
+
+@* Row template used by initDynamicRows(); __i__ is replaced by the row index. *@
+<template id="exerciseTemplate">
+    <div class="dynamic-row">
+        <div class="row g-2 align-items-end">
+            <div class="col-auto"><span class="row-number"></span></div>
+            <div class="col-md-3">
+                <label class="form-label small" for="Exercises___i___Name">Exercise</label>
+                <input class="form-control" id="Exercises___i___Name" name="Exercises[__i__].Name" maxlength="100" placeholder="e.g. Squats" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small" for="Exercises___i___Day">Day</label>
+                <select class="form-select" id="Exercises___i___Day" name="Exercises[__i__].Day">
+                    @foreach (var d in dayOptions)
+                    {
+                        <option value="@((int)d)">@d</option>
+                    }
+                </select>
+            </div>
+            <div class="col"><label class="form-label small">Sets</label><input class="form-control" type="number" name="Exercises[__i__].Sets" value="3" min="0" max="20" /></div>
+            <div class="col"><label class="form-label small">Reps</label><input class="form-control" type="number" name="Exercises[__i__].Reps" value="10" min="0" max="100" /></div>
+            <div class="col"><label class="form-label small">Minutes</label><input class="form-control" type="number" name="Exercises[__i__].DurationMinutes" value="0" min="0" max="300" /></div>
+            <div class="col-md-3"><label class="form-label small">Notes</label><input class="form-control" name="Exercises[__i__].Notes" maxlength="200" /></div>
+            <div class="col-auto"><button type="button" class="btn btn-outline-danger remove-row" aria-label="Remove"><i class="bi bi-x-lg"></i></button></div>
+        </div>
+    </div>
+</template>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>initDynamicRows('exerciseRows', 'exerciseTemplate', 'addExercise');</script>
+}

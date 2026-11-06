@@ -1,0 +1,54 @@
+@model MyPlansViewModel
+@{
+    ViewData["Title"] = "My plans";
+}
+<div class="page-head">
+    <div>
+        <h1>My plans</h1>
+        <p>Workout routines and diet schedules created for you by your trainer.</p>
+    </div>
+</div>
+
+<ul class="nav nav-pills mb-3" role="tablist">
+    <li class="nav-item"><button class="nav-link active" data-bs-toggle="pill" data-bs-target="#workoutTab" type="button">Workout plans (@Model.WorkoutPlans.Count)</button></li>
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#dietTab" type="button">Diet plans (@Model.DietPlans.Count)</button></li>
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#feedbackTab" type="button">Feedback (@Model.Feedback.Count)</button></li>
+</ul>
+
+<div class="tab-content">
+    <div class="tab-pane fade show active" id="workoutTab">
+        @if (!Model.WorkoutPlans.Any())
+        {
+            <div class="panel"><div class="empty"><i class="bi bi-clipboard2"></i><p>No workout plans yet.</p></div></div>
+        }
+        @foreach (var plan in Model.WorkoutPlans)
+        {
+            <partial name="_WorkoutPlanCard" model="plan" />
+        }
+    </div>
+    <div class="tab-pane fade" id="dietTab">
+        @if (!Model.DietPlans.Any())
+        {
+            <div class="panel"><div class="empty"><i class="bi bi-egg"></i><p>No diet plans yet.</p></div></div>
+        }
+        @foreach (var plan in Model.DietPlans)
+        {
+            <partial name="_DietPlanCard" model="plan" />
+        }
+    </div>
+    <div class="tab-pane fade" id="feedbackTab">
+        <div class="panel">
+            @if (!Model.Feedback.Any())
+            {
+                <div class="empty"><i class="bi bi-chat-left"></i><p>No feedback yet.</p></div>
+            }
+            @foreach (var f in Model.Feedback)
+            {
+                <div class="feedback-quote">
+                    <p>@f.Message</p>
+                    <small>@f.Trainer?.FullName · @f.CreatedAt.ToString("dd MMM yyyy, h:mm tt")</small>
+                </div>
+            }
+        </div>
+    </div>
+</div>

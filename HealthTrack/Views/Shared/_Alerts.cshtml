@@ -1,0 +1,13 @@
+@* Flash messages set by controllers through TempData after a redirect. *@
+@if (TempData["Success"] is string success)
+{
+    <div class="alert flash alert-success mb-3" role="status">
+        <i class="bi bi-check-circle-fill"></i><span>@success</span>
+    </div>
+}
+@if (TempData["Error"] is string error)
+{
+    <div class="alert flash alert-danger mb-3" role="alert">
+        <i class="bi bi-exclamation-triangle-fill"></i><span>@error</span>
+    </div>
+}

@@ -1,0 +1,56 @@
+@model List<Notification>
+@{
+    ViewData["Title"] = "Notifications";
+    int unread = Model.Count(n => !n.IsRead);
+}
+<div class="page-head">
+    <div>
+        <h1>Notifications</h1>
+        <p>@unread unread · Reminders for workouts, meals and appointments are generated automatically every 15 minutes.</p>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+        <form asp-action="CheckReminders" method="post">
+            <button class="btn btn-outline-primary" type="submit"><i class="bi bi-arrow-repeat"></i> Check reminders now</button>
+        </form>
+        @if (unread > 0)
+        {
+            <form asp-action="MarkAllRead" method="post">
+                <button class="btn btn-primary" type="submit"><i class="bi bi-check2-all"></i> Mark all as read</button>
+            </form>
+        }
+    </div>
+</div>
+
+<div class="panel">
+    @if (!Model.Any())
+    {
+        <div class="empty"><i class="bi bi-bell-slash"></i><p>No notifications yet.</p></div>
+    }
+    <ul class="list-plain">
+        @foreach (var n in Model)
+        {
+            <li class="list-row" style="@(n.IsRead ? "opacity:.65" : "")">
+                <span class="avatar" style="background:var(--teal-soft);color:var(--pine)"><i class="bi @n.Type.Icon()"></i></span>
+                <div class="grow">
+                    <div class="title">
+                        @n.Title
+                        @if (!n.IsRead) { <span class="pill tone-good">New</span> }
+                    </div>
+                    <div class="meta">@n.Message</div>
+                    <div class="meta">@n.CreatedAt.ToString("dd MMM yyyy, h:mm tt") · @n.CreatedAt.TimeAgo()</div>
+                </div>
+                <div class="d-flex gap-1">
+                    @if (!string.IsNullOrEmpty(n.Link) || !n.IsRead)
+                    {
+                        <form asp-action="Open" asp-route-id="@n.Id" method="post">
+                            <button class="btn btn-sm btn-outline-primary" type="submit">@(string.IsNullOrEmpty(n.Link) ? "Mark read" : "Open")</button>
+                        </form>
+                    }
+                    <form asp-action="Delete" asp-route-id="@n.Id" method="post">
+                        <button class="btn btn-sm btn-outline-danger" type="submit" aria-label="Delete notification"><i class="bi bi-trash"></i></button>
+                    </form>
+                </div>
+            </li>
+        }
+    </ul>
+</div>

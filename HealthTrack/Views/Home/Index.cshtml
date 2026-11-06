@@ -1,0 +1,39 @@
+@{
+    ViewData["Title"] = "Personal health & fitness";
+}
+<section class="hero">
+    <div>
+        <span class="pill tone-good mb-3 d-inline-block"><i class="bi bi-shield-lock"></i> Private & encrypted health records</span>
+        <h1>Train smarter. Eat with a plan. See the progress.</h1>
+        <p class="lead mt-3">
+            HealthTrack brings clients, trainers and health professionals together: personalised workout and diet plans,
+            daily logging, appointments and clear progress charts in one place.
+        </p>
+        <div class="d-flex gap-2 mt-4 flex-wrap">
+            <a class="btn btn-primary btn-lg" asp-controller="Account" asp-action="Register">Create a free account</a>
+            <a class="btn btn-outline-primary btn-lg" asp-controller="Account" asp-action="Login">Sign in</a>
+        </div>
+    </div>
+    <div class="hero-card" aria-hidden="true">
+        <div class="small text-uppercase" style="color:#9fc7bd;letter-spacing:.08em">This week</div>
+        <div class="row-line"><span>Workouts completed</span><span class="big">4 / 5</span></div>
+        <div class="row-line"><span>Calories burned</span><span class="big">1,840 kcal</span></div>
+        <div class="row-line"><span>Weight change</span><span class="big">−0.8 kg</span></div>
+        <div class="row-line"><span>Next session</span><span class="big">Thu · 6:30 PM</span></div>
+    </div>
+</section>
+
+<section class="roles">
+    <div>
+        <h3><i class="bi bi-person-heart text-success"></i> Clients</h3>
+        <p>Log workouts, meals and measurements, follow plans from your trainer, book consultations and watch your trends.</p>
+    </div>
+    <div>
+        <h3><i class="bi bi-person-badge text-success"></i> Trainers</h3>
+        <p>Track every client's progress, build personalised routines and diet schedules, give feedback and manage bookings.</p>
+    </div>
+    <div>
+        <h3><i class="bi bi-gear text-success"></i> Administrators</h3>
+        <p>Approve trainers, assign clients, manage accounts and monitor system usage with reports and activity logs.</p>
+    </div>
+</section>

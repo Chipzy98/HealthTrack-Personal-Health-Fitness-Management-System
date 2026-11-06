@@ -1,0 +1,162 @@
+@model AppointmentListViewModel
+@{
+    ViewData["Title"] = "Appointments";
+    bool isClient = User.IsInRole(nameof(UserRole.Client));
+    bool isTrainer = User.IsInRole(nameof(UserRole.Trainer));
+    bool isAdmin = User.IsInRole(nameof(UserRole.Admin));
+}
+@functions {
+    // Name of the "other party" shown for each appointment, depending on who is looking.
+    string Counterpart(Appointment a) =>
+        User.IsInRole(nameof(UserRole.Client)) ? a.Trainer?.FullName
+        : User.IsInRole(nameof(UserRole.Trainer)) ? a.Client?.FullName
+        : $"{a.Client?.FullName} with {a.Trainer?.FullName}";
+}
+<div class="page-head">
+    <div>
+        <h1>Appointments</h1>
+        <p>
+            @if (isClient) { <text>Book and manage consultations with your trainer or health professionals.</text> }
+            else if (isTrainer) { <text>Approve, reschedule, complete or cancel client consultations.</text> }
+            else { <text>All consultations across the system.</text> }
+        </p>
+    </div>
+    @if (isClient)
+    {
+        <a class="btn btn-primary" asp-action="Create"><i class="bi bi-calendar-plus"></i> Book appointment</a>
+    }
+</div>
+
+<div class="filter-bar">
+    <a class="chip-link @(Model.StatusFilter == null ? "active" : "")" asp-action="Index">All</a>
+    @foreach (var s in Enum.GetValues<AppointmentStatus>())
+    {
+        <a class="chip-link @(Model.StatusFilter == s ? "active" : "")" asp-action="Index" asp-route-status="@s">@s</a>
+    }
+</div>
+
+<div class="panel">
+    <div class="panel-head"><h2>Upcoming (@Model.Upcoming.Count)</h2></div>
+    @if (!Model.Upcoming.Any())
+    {
+        <div class="empty"><i class="bi bi-calendar"></i><p>No upcoming appointments.</p></div>
+    }
+    <ul class="list-plain">
+        @foreach (var a in Model.Upcoming)
+        {
+            <li class="list-row flex-wrap">
+                <div class="date-tile"><div class="d">@a.ScheduledAt.Day</div><div class="m">@a.ScheduledAt.ToString("MMM").ToUpper()</div></div>
+                <div class="grow">
+                    <div class="title">@a.Type.GetDisplayName() · @Counterpart(a)</div>
+                    <div class="meta">
+                        @a.ScheduledAt.ToString("dddd, h:mm tt") – @a.EndsAt.ToString("h:mm tt")
+                        @if (!string.IsNullOrEmpty(a.Reason)) { <span>· "@a.Reason"</span> }
+                    </div>
+                    @if (!string.IsNullOrEmpty(a.TrainerNotes))
+                    {
+                        <div class="meta"><i class="bi bi-chat-left-text"></i> @a.TrainerNotes</div>
+                    }
+                </div>
+                <span class="pill tone-@a.Status.StatusTone()">@a.Status</span>
+                <div class="d-flex gap-1">
+                    @if (isTrainer && a.Status == AppointmentStatus.Pending)
+                    {
+                        <form asp-action="Approve" asp-route-id="@a.Id" method="post">
+                            <button class="btn btn-sm btn-primary" type="submit"><i class="bi bi-check-lg"></i> Approve</button>
+                        </form>
+                    }
+                    @if (isTrainer && a.Status == AppointmentStatus.Approved)
+                    {
+                        <form asp-action="Complete" asp-route-id="@a.Id" method="post">
+                            <button class="btn btn-sm btn-outline-primary" type="submit" title="Mark as completed"><i class="bi bi-check2-all"></i></button>
+                        </form>
+                    }
+                    @if (isTrainer)
+                    {
+                        <a class="btn btn-sm btn-outline-primary" asp-action="Edit" asp-route-id="@a.Id" title="Reschedule / update"><i class="bi bi-pencil"></i></a>
+                    }
+                    <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#cancelModal"
+                            data-id="@a.Id" data-label="@a.Type.GetDisplayName() on @a.ScheduledAt.ToString("ddd dd MMM, h:mm tt")" title="Cancel">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                </div>
+            </li>
+        }
+    </ul>
+</div>
+
+<div class="panel flush">
+    <div class="panel-head"><h2>Past &amp; closed (@Model.Past.Count)</h2></div>
+    @if (!Model.Past.Any())
+    {
+        <div class="empty"><i class="bi bi-clock-history"></i><p>No past appointments.</p></div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead><tr><th>Date</th><th>Type</th><th>With</th><th>Status</th><th>Notes</th>@if (isTrainer) { <th></th> }</tr></thead>
+                <tbody>
+                    @foreach (var a in Model.Past)
+                    {
+                        <tr>
+                            <td>@a.ScheduledAt.ToString("dd MMM yyyy, h:mm tt")</td>
+                            <td>@a.Type.GetDisplayName()</td>
+                            <td>@Counterpart(a)</td>
+                            <td><span class="pill tone-@a.Status.StatusTone()">@a.Status</span></td>
+                            <td class="small text-muted">@a.TrainerNotes</td>
+                            @if (isTrainer)
+                            {
+                                <td class="text-end">
+                                    @if (a.Status == AppointmentStatus.Approved)
+                                    {
+                                        <form asp-action="Complete" asp-route-id="@a.Id" method="post">
+                                            <button class="btn btn-sm btn-outline-primary" type="submit">Mark completed</button>
+                                        </form>
+                                    }
+                                    else if (a.Status == AppointmentStatus.Pending)
+                                    {
+                                        <a class="btn btn-sm btn-outline-primary" asp-action="Edit" asp-route-id="@a.Id">Reschedule</a>
+                                    }
+                                </td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+@* Shared cancel dialog. The appointment id is filled in when the dialog opens. *@
+<div class="modal fade" id="cancelModal" tabindex="-1" aria-labelledby="cancelTitle" aria-hidden="true">
+    <div class="modal-dialog">
+        <form asp-action="Cancel" method="post" class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title h5" id="cancelTitle">Cancel appointment</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" name="id" id="cancelId" />
+                <p id="cancelLabel" class="fw-semibold"></p>
+                <label for="cancelReason" class="form-label">Reason (optional, shared with the other person)</label>
+                <textarea name="reason" id="cancelReason" class="form-control" rows="3" maxlength="400"></textarea>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-primary" data-bs-dismiss="modal">Keep it</button>
+                <button type="submit" class="btn btn-danger">Cancel appointment</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.getElementById('cancelModal').addEventListener('show.bs.modal', function (e) {
+            const button = e.relatedTarget;
+            document.getElementById('cancelId').value = button.dataset.id;
+            document.getElementById('cancelLabel').textContent = button.dataset.label;
+            document.getElementById('cancelReason').value = '';
+        });
+    </script>
+}

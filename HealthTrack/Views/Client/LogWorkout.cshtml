@@ -1,0 +1,86 @@
+@model WorkoutLogFormViewModel
+@{
+    ViewData["Title"] = "Log workout";
+}
+<div class="page-head">
+    <div>
+        <h1>Log a workout</h1>
+        <p>Leave calories empty and we'll estimate them from the duration and intensity.</p>
+    </div>
+    <a class="btn btn-outline-primary" asp-action="WorkoutLogs"><i class="bi bi-arrow-left"></i> Back</a>
+</div>
+
+<div class="panel" style="max-width:760px">
+    <form asp-action="LogWorkout" method="post" novalidate>
+        <div asp-validation-summary="ModelOnly" class="mb-3"></div>
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label asp-for="ExerciseName" class="form-label"></label>
+                <input asp-for="ExerciseName" class="form-control" list="exerciseSuggestions" autocomplete="off" />
+                <datalist id="exerciseSuggestions">
+                    @foreach (var name in Model.SuggestedExercises)
+                    {
+                        <option value="@name"></option>
+                    }
+                </datalist>
+                <span asp-validation-for="ExerciseName" class="field-validation-error"></span>
+            </div>
+            <div class="col-md-6">
+                <label asp-for="Date" class="form-label"></label>
+                <input asp-for="Date" class="form-control" max="@DateTime.Today.ToString("yyyy-MM-dd")" />
+                <span asp-validation-for="Date" class="field-validation-error"></span>
+            </div>
+            <div class="col-md-4">
+                <label asp-for="DurationMinutes" class="form-label"></label>
+                <input asp-for="DurationMinutes" class="form-control" min="1" max="600" />
+                <span asp-validation-for="DurationMinutes" class="field-validation-error"></span>
+            </div>
+            <div class="col-md-4">
+                <label asp-for="Intensity" class="form-label"></label>
+                <select asp-for="Intensity" asp-items="Html.GetEnumSelectList<WorkoutIntensity>()" class="form-select"></select>
+            </div>
+            <div class="col-md-4">
+                <label asp-for="CaloriesBurned" class="form-label">Calories burned</label>
+                <input asp-for="CaloriesBurned" class="form-control" placeholder="Auto estimate" />
+                <div class="form-text" id="calorieHint"></div>
+                <span asp-validation-for="CaloriesBurned" class="field-validation-error"></span>
+            </div>
+            <div class="col-md-3">
+                <label asp-for="Sets" class="form-label"></label>
+                <input asp-for="Sets" class="form-control" />
+                <span asp-validation-for="Sets" class="field-validation-error"></span>
+            </div>
+            <div class="col-md-3">
+                <label asp-for="Reps" class="form-label"></label>
+                <input asp-for="Reps" class="form-control" />
+                <span asp-validation-for="Reps" class="field-validation-error"></span>
+            </div>
+            <div class="col-md-6">
+                <label asp-for="Notes" class="form-label"></label>
+                <input asp-for="Notes" class="form-control" placeholder="How did it feel?" />
+                <span asp-validation-for="Notes" class="field-validation-error"></span>
+            </div>
+        </div>
+        <button type="submit" class="btn btn-primary mt-4">Save workout</button>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        // Live preview of the calorie estimate (same kcal/min factors as HealthCalculator).
+        (function () {
+            const factors = { '0': 4, '1': 7, '2': 10 };
+            const duration = document.getElementById('DurationMinutes');
+            const intensity = document.getElementById('Intensity');
+            const hint = document.getElementById('calorieHint');
+            function update() {
+                const mins = parseInt(duration.value, 10) || 0;
+                hint.textContent = mins > 0 ? 'Estimate: about ' + (mins * factors[intensity.value]) + ' kcal' : '';
+            }
+            duration.addEventListener('input', update);
+            intensity.addEventListener('change', update);
+            update();
+        })();
+    </script>
+}

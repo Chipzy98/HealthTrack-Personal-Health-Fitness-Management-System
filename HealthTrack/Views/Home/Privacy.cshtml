@@ -1,0 +1,27 @@
+@{
+    ViewData["Title"] = "Privacy policy";
+}
+<div class="page-head">
+    <div>
+        <h1>Privacy policy</h1>
+        <p>How HealthTrack protects your personal health information.</p>
+    </div>
+</div>
+<div class="panel">
+    <h2 class="h5">What we collect</h2>
+    <p>Your name, contact details, date of birth, height, and the health data you enter: weight, body measurements, blood pressure, heart rate, sleep, workouts and meals.</p>
+
+    <h2 class="h5 mt-4">How it is protected</h2>
+    <ul>
+        <li>Passwords are never stored. Only a salted PBKDF2 hash (100,000 iterations) is kept.</li>
+        <li>Medical conditions and private measurement notes are encrypted in the database with ASP.NET Core Data Protection.</li>
+        <li>All forms are validated on the server and protected against cross-site request forgery.</li>
+        <li>Accounts are locked for 15 minutes after 5 failed sign-in attempts.</li>
+    </ul>
+
+    <h2 class="h5 mt-4">Who can see your data</h2>
+    <p>Only you, the trainer assigned to you, and system administrators. Trainers can only open records of their own clients.</p>
+
+    <h2 class="h5 mt-4">Your rights</h2>
+    <p>You can view and update your profile at any time, delete your own log entries, and ask an administrator to deactivate your account.</p>
+</div>

@@ -1,0 +1,163 @@
+@model TrainerDashboardViewModel
+@{
+    ViewData["Title"] = "Trainer dashboard";
+    var needAttention = Model.Clients.Where(c => c.IsActive && c.NeedsAttention).ToList();
+}
+<div class="page-head">
+    <div>
+        <h1>Coaching overview</h1>
+        <p>@DateTime.Today.ToString("dddd, dd MMMM yyyy")</p>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+        <a class="btn btn-primary" asp-action="CreateWorkoutPlan"><i class="bi bi-plus-lg"></i> Workout plan</a>
+        <a class="btn btn-outline-primary" asp-action="CreateDietPlan"><i class="bi bi-plus-lg"></i> Diet plan</a>
+    </div>
+</div>
+
+<div class="vitals mb-4">
+    <div class="vital"><div class="label">Clients</div><div class="value">@Model.Clients.Count</div><div class="sub">@Model.Clients.Count(c => c.WorkoutsThisWeek > 0) trained this week</div></div>
+    <div class="vital"><div class="label">Pending requests</div><div class="value">@Model.PendingAppointments.Count</div><div class="sub">Appointments to review</div></div>
+    <div class="vital"><div class="label">Active plans</div><div class="value">@Model.ActivePlanCount</div><div class="sub">Workout + diet</div></div>
+    <div class="vital"><div class="label">Feedback given</div><div class="value">@Model.FeedbackThisMonth</div><div class="sub">This month</div></div>
+</div>
+
+<div class="row g-4">
+    <div class="col-xl-8">
+        <div class="panel flush">
+            <div class="panel-head">
+                <h2>Client progress</h2>
+                <a asp-action="Clients" class="small">All clients <i class="bi bi-arrow-right"></i></a>
+            </div>
+            @if (!Model.Clients.Any())
+            {
+                <div class="empty"><i class="bi bi-people"></i><p>No clients are assigned to you yet. An administrator assigns clients to trainers.</p></div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table align-middle mb-0">
+                        <thead><tr><th>Client</th><th>Weight</th><th>BMI</th><th>This week</th><th>Last workout</th><th>Plan</th><th></th></tr></thead>
+                        <tbody>
+                            @foreach (var c in Model.Clients)
+                            {
+                                <tr>
+                                    <td class="fw-semibold">@c.FullName @if (!c.IsActive) { <span class="pill tone-neutral">Inactive</span> }</td>
+                                    <td>
+                                        @(c.LatestWeight.HasValue ? c.LatestWeight.Value.ToString("0.0") + " kg" : "–")
+                                        @if (c.WeightChange.HasValue && c.WeightChange != 0)
+                                        {
+                                            <span class="small @(c.WeightChange < 0 ? "delta-down" : "delta-up")">(@(c.WeightChange > 0 ? "+" : "")@c.WeightChange)</span>
+                                        }
+                                    </td>
+                                    <td>@if (c.LatestBmi.HasValue) { <span class="pill tone-@HealthCalculator.BmiTone(c.LatestBmi.Value)">@c.LatestBmi.Value.ToString("0.0")</span> } else { <span>–</span> }</td>
+                                    <td>@c.WorkoutsThisWeek sessions</td>
+                                    <td>
+                                        @if (c.NeedsAttention)
+                                        {
+                                            <span class="pill tone-warn">@(c.LastWorkout.HasValue ? c.LastWorkout.Value.ToString("dd MMM") : "Never")</span>
+                                        }
+                                        else
+                                        {
+                                            @c.LastWorkout.Value.ToString("dd MMM")
+                                        }
+                                    </td>
+                                    <td>@if (c.HasActivePlan) { <i class="bi bi-check-circle-fill text-success" title="Has an active workout plan"></i> } else { <a asp-action="CreateWorkoutPlan" asp-route-clientId="@c.ClientId" class="small">Create</a> }</td>
+                                    <td class="text-end"><a class="btn btn-sm btn-outline-primary" asp-action="ClientDetails" asp-route-id="@c.ClientId">Open</a></td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+
+        <div class="panel">
+            <div class="panel-head"><h2>Recent client workouts</h2></div>
+            @if (!Model.RecentClientWorkouts.Any())
+            {
+                <div class="empty"><i class="bi bi-activity"></i><p>No workouts logged by your clients yet.</p></div>
+            }
+            <ul class="list-plain">
+                @foreach (var w in Model.RecentClientWorkouts)
+                {
+                    <li class="list-row">
+                        <span class="avatar">@w.Client.Initials</span>
+                        <div class="grow">
+                            <div class="title">@w.Client.FullName · @w.ExerciseName</div>
+                            <div class="meta">@w.Date.ToString("ddd dd MMM") · @w.DurationMinutes min · @(w.Intensity + " intensity" + (string.IsNullOrEmpty(w.Notes) ? "" : " · \"" + w.Notes + "\""))</div>
+                        </div>
+                        <span class="small text-muted">@w.CaloriesBurned kcal</span>
+                    </li>
+                }
+            </ul>
+        </div>
+    </div>
+
+    <div class="col-xl-4">
+        <div class="panel">
+            <div class="panel-head">
+                <h2>Requests to review</h2>
+                <a asp-controller="Appointments" asp-action="Index" class="small">All</a>
+            </div>
+            @if (!Model.PendingAppointments.Any())
+            {
+                <div class="empty"><i class="bi bi-inbox"></i><p>No pending requests.</p></div>
+            }
+            @foreach (var a in Model.PendingAppointments)
+            {
+                <div class="list-row">
+                    <div class="date-tile"><div class="d">@a.ScheduledAt.Day</div><div class="m">@a.ScheduledAt.ToString("MMM").ToUpper()</div></div>
+                    <div class="grow">
+                        <div class="title">@a.Client.FullName</div>
+                        <div class="meta">@a.Type.GetDisplayName() · @a.ScheduledAt.ToString("h:mm tt")</div>
+                    </div>
+                    <div class="d-flex gap-1">
+                        <form asp-controller="Appointments" asp-action="Approve" asp-route-id="@a.Id" method="post">
+                            <button class="btn btn-sm btn-primary" type="submit" title="Approve"><i class="bi bi-check-lg"></i></button>
+                        </form>
+                        <a class="btn btn-sm btn-outline-primary" asp-controller="Appointments" asp-action="Edit" asp-route-id="@a.Id" title="Reschedule"><i class="bi bi-pencil"></i></a>
+                    </div>
+                </div>
+            }
+        </div>
+
+        <div class="panel">
+            <div class="panel-head"><h2>Upcoming sessions</h2></div>
+            @if (!Model.UpcomingAppointments.Any())
+            {
+                <div class="empty"><i class="bi bi-calendar"></i><p>No approved sessions coming up.</p></div>
+            }
+            <ul class="list-plain">
+                @foreach (var a in Model.UpcomingAppointments)
+                {
+                    <li class="list-row">
+                        <div class="date-tile"><div class="d">@a.ScheduledAt.Day</div><div class="m">@a.ScheduledAt.ToString("MMM").ToUpper()</div></div>
+                        <div class="grow">
+                            <div class="title">@a.Client.FullName</div>
+                            <div class="meta">@a.ScheduledAt.ToString("ddd h:mm tt") · @a.DurationMinutes min</div>
+                        </div>
+                    </li>
+                }
+            </ul>
+        </div>
+
+        <div class="panel">
+            <div class="panel-head"><h2>Needs attention</h2></div>
+            @if (!needAttention.Any())
+            {
+                <div class="empty"><i class="bi bi-emoji-smile"></i><p>Every client has trained in the last 7 days.</p></div>
+            }
+            @foreach (var c in needAttention)
+            {
+                <div class="list-row">
+                    <i class="bi bi-exclamation-circle text-warning fs-5"></i>
+                    <div class="grow">
+                        <div class="title">@c.FullName</div>
+                        <div class="meta">No workout in the last 7 days</div>
+                    </div>
+                    <a class="btn btn-sm btn-outline-primary" asp-action="ClientDetails" asp-route-id="@c.ClientId">Follow up</a>
+                </div>
+            }
+        </div>
+    </div>
+</div>

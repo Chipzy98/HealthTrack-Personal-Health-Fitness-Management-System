@@ -1,0 +1,21 @@
+@model AdminUserFormViewModel
+@{
+    ViewData["Title"] = "Edit " + Model.FullName;
+}
+<div class="page-head">
+    <div>
+        <h1>Edit user</h1>
+        <p>@Model.Email</p>
+    </div>
+    <a class="btn btn-outline-primary" asp-action="Users"><i class="bi bi-arrow-left"></i> Back</a>
+</div>
+<div class="panel" style="max-width:860px">
+    <form asp-action="EditUser" method="post" novalidate>
+        <partial name="_UserForm" model="Model" />
+        <button type="submit" class="btn btn-primary mt-4">Save changes</button>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
