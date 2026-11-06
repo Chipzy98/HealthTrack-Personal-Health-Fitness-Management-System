@@ -5,13 +5,14 @@
 ### Requirements
 - **Visual Studio 2022** (17.8 or later) with the **ASP.NET and web development** workload
 - **.NET 8 SDK** (installed with VS 2022 17.8+)
-- **SQL Server Express LocalDB** (installed with the ASP.NET workload)
+- **SQL Server** 2016 or later – Developer or Express edition (LocalDB also works, see below)
+- **SQL Server Management Studio (SSMS)** to run the database script
 - Internet connection (Bootstrap, icons, jQuery validation, Chart.js and fonts are loaded from CDNs)
 
 ### Reset the database
-Open *View → SQL Server Object Explorer*, expand `(localdb)\MSSQLLocalDB → Databases`, delete **HealthTrackDb** (tick *Close existing connections*) and run the project again. It is recreated with fresh demo data. Do this also if you change the model classes.
+Uncomment section 0 at the top of `HealthTrackDb.sql`, run the script again, and run the project. The database is recreated empty and filled with fresh demo data. Do this also if you change the model classes, and update the matching `CREATE TABLE` in the script.
 
-To use a different SQL Server, change `ConnectionStrings:DefaultConnection` in `appsettings.json`.
+Demo passwords are hashed and medical notes are encrypted by the application, so don't insert users directly with SQL. Register them in the app, or let the seeder create the demo accounts.
 
 ### Demo accounts
 

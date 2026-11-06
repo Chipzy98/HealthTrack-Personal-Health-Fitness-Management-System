@@ -19,8 +19,12 @@ builder.Services.AddDataProtection()
     .SetApplicationName("HealthTrack");
 
 // ---------------- Database ----------------
+// UseCompatibilityLevel(120) = SQL Server 2014. Without it EF Core 8 translates list.Contains(...)
+// with OPENJSON, which only exists from SQL Server 2016 (level 130).
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseSqlServer(
+        builder.Configuration.GetConnectionString("DefaultConnection"),
+        sqlOptions => sqlOptions.UseCompatibilityLevel(120)));
 
 // ---------------- Application services ----------------
 builder.Services.AddHttpContextAccessor();
